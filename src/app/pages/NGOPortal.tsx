@@ -9,6 +9,7 @@ import { AssignedBadge } from '../components/shared/AssignedBadge';
 import { DuplicateBadge } from '../components/shared/DuplicateBadge';
 import { getLocalizedIssueCopy, getLocalizedStateName } from '../utils/issueLocalization';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { getStateQualityRatings } from '../utils/stateQuality';
 
 const COLORS = ['#0B1C2D', '#E8821C', '#22C55E', '#3B82F6', '#EF4444', '#8B5CF6'];
 
@@ -92,10 +93,11 @@ export default function NGOPortal() {
     { name: 'Sanitation', value: issues.filter(i => i.category === 'sanitation').length, color: '#22C55E' },
   ];
 
-  const stateData = allStates.map(state => ({
-    state: state.substring(0, 8),
-    total: issues.filter(i => i.state === state).length,
-    unresolved: issues.filter(i => i.state === state && i.status !== 'resolved').length,
+  const stateQualityRatings = getStateQualityRatings(issues);
+  const stateData = stateQualityRatings.map(rating => ({
+    state: getLocalizedStateName(rating.state, language).substring(0, 10),
+    quality: rating.qualityScore,
+    resolved: rating.resolvedIssues,
   }));
 
   const urgencyData = [
@@ -326,16 +328,45 @@ export default function NGOPortal() {
             {/* State Analytics */}
             <div className="bg-white rounded-2xl p-5 shadow-sm" style={{ border: '1px solid #E2E8F0' }}>
               <h3 className="mb-4" style={{ color: '#0B1C2D', fontWeight: 600 }}>🗺️ State-wise Issue Analytics</h3>
+              <div className="flex flex-wrap items-end justify-between gap-3 mb-4">
+                <p className="text-sm text-gray-500">Past performance score based on resolved outcomes, citizen ratings, trust signals, and pending verification load.</p>
+                {stateQualityRatings[0] && <div className="px-4 py-2 rounded-2xl text-sm" style={{ background: '#F0FDF4', color: '#15803D', border: '1px solid #BBF7D0', fontWeight: 600 }}>
+                  Top state: {getLocalizedStateName(stateQualityRatings[0].state, language)} ({stateQualityRatings[0].qualityScore}/100)
+                </div>}
+              </div>
               <ResponsiveContainer width="100%" height={260}>
                 <BarChart data={stateData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                   <XAxis dataKey="state" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 11 }} domain={[0, 100]} />
                   <Tooltip />
                   <Legend />
-                  <Bar dataKey="total" name="Total Issues" fill="#0B1C2D" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="unresolved" name="Unresolved" fill="#E8821C" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="quality" name="Quality Score" fill="#0B1C2D" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="resolved" name="Resolved Issues" fill="#22C55E" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
+              <div className="grid gap-3 mt-4">
+                {stateQualityRatings.slice(0, 5).map((rating, index) => (
+                  <div key={rating.state} className="rounded-2xl p-4" style={{ background: '#F8FAFC', border: '1px solid #E2E8F0' }}>
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-2xl flex items-center justify-center text-sm text-white" style={{ background: index === 0 ? '#15803D' : '#0B1C2D', fontWeight: 700 }}>
+                          #{index + 1}
+                        </div>
+                        <div>
+                          <p style={{ color: '#0B1C2D', fontWeight: 600 }}>{getLocalizedStateName(rating.state, language)}</p>
+                          <p className="text-xs text-gray-500">{rating.resolvedIssues}/{rating.totalIssues} resolved • Rating {rating.averageRating}/5 • Trust {rating.trustRate}%</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p style={{ color: '#0B1C2D', fontWeight: 700 }}>{rating.qualityScore}/100</p>
+                        <p className="text-xs" style={{ color: rating.qualityBand === 'Excellent' ? '#15803D' : rating.qualityBand === 'Strong' ? '#1D4ED8' : rating.qualityBand === 'Fair' ? '#B45309' : '#991B1B' }}>
+                          {rating.qualityBand}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
 
             {/* NGO Participation */}

@@ -8,6 +8,7 @@ import { BeforeAfterModal } from '../components/shared/BeforeAfterModal';
 import { AssignedBadge } from '../components/shared/AssignedBadge';
 import { DuplicateBadge } from '../components/shared/DuplicateBadge';
 import { getLocalizedIssueCopy, getLocalizedStateName } from '../utils/issueLocalization';
+import { getStateQualityRatings } from '../utils/stateQuality';
 
 export default function AuthorityPortal() {
   const navigate = useNavigate();
@@ -33,6 +34,8 @@ export default function AuthorityPortal() {
   const suspicious = issues.filter(i => i.isSuspicious).length;
 
   const allStates = [...new Set(issues.map(i => i.state))];
+  const stateQualityRatings = getStateQualityRatings(issues);
+  const topStateQualityRatings = stateQualityRatings.slice(0, 5);
   const filteredIssues = issues.filter(i => {
     if (filterStatus !== 'all') {
       if (filterStatus === 'unresolved') {
@@ -143,6 +146,52 @@ export default function AuthorityPortal() {
                 ))}
               </div>
             )}
+
+            <div className="mb-6 bg-white rounded-2xl shadow-sm p-5" style={{ border: '1px solid #E2E8F0' }}>
+              <div className="flex flex-wrap items-end justify-between gap-3 mb-4">
+                <div>
+                  <h3 style={{ color: '#0B1C2D', fontWeight: 600 }}>State Quality Rankings</h3>
+                  <p className="text-gray-500 text-sm">Historical score based on resolution rate, citizen ratings, trust signals, and pending verification load.</p>
+                </div>
+                {topStateQualityRatings[0] && (
+                  <div className="px-4 py-2 rounded-2xl text-sm" style={{ background: '#F0FDF4', color: '#15803D', border: '1px solid #BBF7D0', fontWeight: 600 }}>
+                    Best performer: {getLocalizedStateName(topStateQualityRatings[0].state, language)} ({topStateQualityRatings[0].qualityScore}/100)
+                  </div>
+                )}
+              </div>
+              <div className="grid gap-3">
+                {topStateQualityRatings.map((rating, index) => (
+                  <div key={rating.state} className="rounded-2xl p-4" style={{ background: index === 0 ? '#F8FAFC' : '#FFFFFF', border: '1px solid #E2E8F0' }}>
+                    <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-sm text-white" style={{ background: index === 0 ? '#15803D' : '#0B1C2D', fontWeight: 700 }}>
+                          #{index + 1}
+                        </div>
+                        <div>
+                          <p style={{ color: '#0B1C2D', fontWeight: 600 }}>{getLocalizedStateName(rating.state, language)}</p>
+                          <p className="text-xs text-gray-500">{rating.resolvedIssues}/{rating.totalIssues} issues resolved • Avg rating {rating.averageRating}/5</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p style={{ color: '#0B1C2D', fontWeight: 700 }}>{rating.qualityScore}/100</p>
+                        <p className="text-xs" style={{ color: rating.qualityBand === 'Excellent' ? '#15803D' : rating.qualityBand === 'Strong' ? '#1D4ED8' : rating.qualityBand === 'Fair' ? '#B45309' : '#991B1B' }}>
+                          {rating.qualityBand}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="h-2 rounded-full overflow-hidden" style={{ background: '#E2E8F0' }}>
+                      <div className="h-full rounded-full" style={{ width: `${rating.qualityScore}%`, background: rating.qualityScore >= 85 ? '#15803D' : rating.qualityScore >= 70 ? '#2563EB' : rating.qualityScore >= 55 ? '#D97706' : '#DC2626' }} />
+                    </div>
+                    <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs text-gray-500">
+                      <span>Resolution rate: {rating.resolutionRate}%</span>
+                      <span>Trust score: {rating.trustRate}%</span>
+                      <span>Awaiting verify: {rating.awaitingVerificationIssues}</span>
+                      <span>Suspicious: {rating.suspiciousIssues}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
 
             {/* Recent High Urgency */}
             <div className="bg-white rounded-2xl shadow-sm p-5" style={{ border: '1px solid #E2E8F0' }}>

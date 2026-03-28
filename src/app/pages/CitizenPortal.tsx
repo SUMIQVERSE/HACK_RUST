@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import L from 'leaflet';
 import { useNavigate } from 'react-router';
 import { useApp, Issue } from '../context/AppContext';
 import { useLang } from '../context/LanguageContext';
@@ -31,6 +32,35 @@ const CHAT_MESSAGES = [
   { id: 5, sender: 'support', text: 'आमतौर पर 7-14 कार्य दिवस लगते हैं। हम आपको हर अपडेट के बारे में सूचित करेंगे। / Typically 7-14 working days. We will notify you of every update.', time: '10:06 AM' },
 ];
 
+type GeoPoint = {
+  lat: number;
+  lng: number;
+  accuracy?: number;
+};
+
+const normalizeDetectedState = (rawState: string) => {
+  const trimmed = rawState.trim();
+  if (!trimmed) return '';
+
+  const match = STATES.find(state => {
+    const expected = state.toLowerCase();
+    const detected = trimmed.toLowerCase();
+    return detected.includes(expected) || expected.includes(detected);
+  });
+
+  return match || trimmed;
+};
+
+const getDetectedCity = (address: Record<string, string | undefined>) => {
+  return address.city || address.town || address.village || address.hamlet || address.county || '';
+};
+
+const getDetectedLandmark = (address: Record<string, string | undefined>, fallback: string) => {
+  const parts = [address.road, address.suburb, address.neighbourhood].filter(Boolean);
+  if (parts.length > 0) return parts.join(', ');
+  return fallback;
+};
+
 export default function CitizenPortal() {
   const navigate = useNavigate();
   const { currentUser, issues, voteOnIssue, addIssue, rateContractor, addComment, comments, users, addDonation, donations } = useApp();
@@ -53,11 +83,96 @@ export default function CitizenPortal() {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const recognitionRef = useRef<any>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const mapContainerRef = useRef<HTMLDivElement | null>(null);
+  const mapRef = useRef<L.Map | null>(null);
+  const mapMarkerRef = useRef<L.CircleMarker | null>(null);
+  const autoLocationRequestedRef = useRef(false);
+  const [detectedLocation, setDetectedLocation] = useState<GeoPoint | null>(null);
+  const [locationStatus, setLocationStatus] = useState<'idle' | 'detecting' | 'ready' | 'error'>('idle');
+  const [locationMessage, setLocationMessage] = useState('');
 
   // Chat
   const [chatMessages, setChatMessages] = useState(CHAT_MESSAGES);
   const [newMessage, setNewMessage] = useState('');
   const chatEndRef = useRef<HTMLDivElement>(null);
+
+  const detectCurrentLocation = (isAutomatic = false) => {
+    if (!navigator.geolocation) {
+      setLocationStatus('error');
+      setLocationMessage('Location services are not available in this browser. Please enter the address manually.');
+      return;
+    }
+
+    setLocationStatus('detecting');
+    setLocationMessage(isAutomatic ? 'Trying to detect your current location...' : 'Detecting your current location...');
+
+    navigator.geolocation.getCurrentPosition(
+      async position => {
+        const nextLocation = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+        };
+
+        setDetectedLocation(nextLocation);
+        setLocationStatus('ready');
+        setLocationMessage('Current location captured. Updating nearby address details...');
+
+        try {
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${nextLocation.lat}&lon=${nextLocation.lng}&zoom=18&addressdetails=1`,
+            {
+              headers: {
+                'Accept-Language': language === 'hi' ? 'hi,en' : 'en',
+              },
+            },
+          );
+
+          if (!response.ok) {
+            throw new Error('Reverse geocoding failed');
+          }
+
+          const data = await response.json();
+          const address = (data.address ?? {}) as Record<string, string | undefined>;
+          const detectedState = normalizeDetectedState(address.state ?? '');
+          const detectedCity = getDetectedCity(address);
+          const detectedLandmark = getDetectedLandmark(address, data.display_name || '');
+
+          setFormData(prev => ({
+            ...prev,
+            state: prev.state || detectedState,
+            city: prev.city || detectedCity,
+            address: prev.address || detectedLandmark,
+          }));
+
+          setLocationMessage('Current location captured and the address fields were updated. You can still edit them.');
+        } catch (error) {
+          setFormData(prev => ({
+            ...prev,
+            address: prev.address || `Lat ${nextLocation.lat.toFixed(5)}, Lng ${nextLocation.lng.toFixed(5)}`,
+          }));
+          setLocationMessage('Current location captured. Address lookup is unavailable, so you can complete the text fields manually.');
+        }
+      },
+      error => {
+        let message = 'Unable to detect your current location. Please enter the address manually.';
+
+        if (error.code === error.PERMISSION_DENIED) {
+          message = 'Location access was blocked. Please allow location access and try again.';
+        } else if (error.code === error.TIMEOUT) {
+          message = 'Location detection timed out. Please try again in an open area or with a stronger signal.';
+        }
+
+        setLocationStatus('error');
+        setLocationMessage(message);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 60000,
+      },
+    );
+  };
 
   useEffect(() => {
     if (!currentUser) navigate('/');
@@ -66,6 +181,58 @@ export default function CitizenPortal() {
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages]);
+
+  useEffect(() => {
+    if (activeTab !== 'report' || autoLocationRequestedRef.current) return;
+    autoLocationRequestedRef.current = true;
+    detectCurrentLocation(true);
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (activeTab === 'report' || !mapRef.current) return;
+    mapRef.current.remove();
+    mapRef.current = null;
+    mapMarkerRef.current = null;
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (activeTab !== 'report' || !detectedLocation || !mapContainerRef.current) return;
+
+    if (!mapRef.current) {
+      mapRef.current = L.map(mapContainerRef.current, {
+        zoomControl: false,
+        attributionControl: false,
+      });
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors',
+      }).addTo(mapRef.current);
+
+      L.control.zoom({ position: 'bottomright' }).addTo(mapRef.current);
+    }
+
+    if (!mapMarkerRef.current) {
+      mapMarkerRef.current = L.circleMarker([detectedLocation.lat, detectedLocation.lng], {
+        radius: 10,
+        color: '#0B1C2D',
+        fillColor: '#E8821C',
+        fillOpacity: 0.95,
+        weight: 3,
+      }).addTo(mapRef.current);
+    } else {
+      mapMarkerRef.current.setLatLng([detectedLocation.lat, detectedLocation.lng]);
+    }
+
+    mapRef.current.setView([detectedLocation.lat, detectedLocation.lng], 16);
+    window.setTimeout(() => mapRef.current?.invalidateSize(), 0);
+  }, [activeTab, detectedLocation]);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+      mapRef.current?.remove();
+    };
+  }, []);
 
   const myIssues = issues;
   const filteredIssues = myIssues.filter(i => {
@@ -153,6 +320,8 @@ export default function CitizenPortal() {
       state: formData.state,
       city: formData.city,
       address: formData.address || formData.city,
+      latitude: detectedLocation?.lat,
+      longitude: detectedLocation?.lng,
       createdBy: currentUser?.id || 'u1',
       assignedContractor: null,
       assignedNgo: null,
@@ -169,6 +338,10 @@ export default function CitizenPortal() {
     addIssue(newIssue);
     setFormData({ title: '', category: '', description: '', state: '', city: '', address: '', imagePreview: '' });
     setUploadedFile(null);
+    setDetectedLocation(null);
+    setLocationStatus('idle');
+    setLocationMessage('');
+    autoLocationRequestedRef.current = false;
     setVoiceStatus('idle');
     setActiveTab('issues');
     alert('✅ Issue submitted successfully! It will appear in the dashboard shortly.');
@@ -186,6 +359,7 @@ export default function CitizenPortal() {
   };
 
   const inputStyle = { borderColor: '#E2E8F0', background: '#F8FAFC', fontFamily: "'Mukta', sans-serif" };
+  const stateOptions = formData.state && !STATES.includes(formData.state) ? [formData.state, ...STATES] : STATES;
 
   const tabs = [
     { key: 'issues', label: t('citizen.tab.issues'), emoji: '📋' },
@@ -408,7 +582,7 @@ export default function CitizenPortal() {
                   <select className="w-full px-4 py-2.5 rounded-xl border-2 outline-none" style={inputStyle}
                     value={formData.state} onChange={e => setFormData(p => ({ ...p, state: e.target.value }))} required>
                     <option value="">{t('select.state')}</option>
-                    {STATES.map(s => <option key={s} value={s}>{s}</option>)}
+                    {stateOptions.map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </div>
                 <div>
@@ -423,6 +597,59 @@ export default function CitizenPortal() {
                     value={formData.address} onChange={e => setFormData(p => ({ ...p, address: e.target.value }))}
                     placeholder="Street / Landmark" />
                 </div>
+              </div>
+
+              <div className="rounded-2xl p-4 sm:p-5" style={{ background: '#F8FAFC', border: '1px solid #E2E8F0' }}>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p className="text-sm" style={{ color: '#0B1C2D', fontWeight: 600 }}>Auto location</p>
+                    <p className="text-xs mt-1 text-gray-500">
+                      Use your current location to preview the issue spot on the map and prefill nearby address details.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => detectCurrentLocation()}
+                    disabled={locationStatus === 'detecting'}
+                    className="px-4 py-2.5 rounded-xl text-sm transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                    style={{ background: '#0B1C2D', color: 'white', fontWeight: 500 }}
+                  >
+                    {locationStatus === 'detecting' ? 'Detecting location...' : detectedLocation ? 'Refresh location' : 'Use current location'}
+                  </button>
+                </div>
+
+                {locationMessage && (
+                  <p
+                    className="text-sm mt-3"
+                    style={{ color: locationStatus === 'error' ? '#B91C1C' : '#0F766E' }}
+                  >
+                    {locationMessage}
+                  </p>
+                )}
+
+                <div
+                  className="mt-4 rounded-2xl overflow-hidden"
+                  style={{ border: '1px solid #CBD5E1', background: '#E2E8F0' }}
+                >
+                  {detectedLocation ? (
+                    <div ref={mapContainerRef} style={{ width: '100%', height: 240 }} />
+                  ) : (
+                    <div className="h-60 flex items-center justify-center px-6 text-center text-sm text-gray-500">
+                      Allow location access to preview your issue on OpenStreetMap.
+                    </div>
+                  )}
+                </div>
+
+                {detectedLocation && (
+                  <div className="mt-3 flex flex-col gap-1 text-xs text-gray-500 sm:flex-row sm:items-center sm:justify-between">
+                    <span>Lat {detectedLocation.lat.toFixed(5)}, Lng {detectedLocation.lng.toFixed(5)}</span>
+                    {detectedLocation.accuracy ? <span>Approx. accuracy: {Math.round(detectedLocation.accuracy)} m</span> : <span>OpenStreetMap preview ready</span>}
+                  </div>
+                )}
+
+                <p className="text-xs mt-2 text-gray-500">
+                  Map tiles by OpenStreetMap. You can still edit the state, city, and landmark fields manually.
+                </p>
               </div>
 
               <div>

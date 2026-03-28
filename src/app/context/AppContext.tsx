@@ -29,6 +29,8 @@ export interface Issue {
   state: string;
   city: string;
   address: string;
+  latitude?: number;
+  longitude?: number;
   createdBy: string;
   assignedContractor: string | null;
   assignedNgo: string | null;

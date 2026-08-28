@@ -7,6 +7,8 @@ import { StatusBadge, UrgencyBadge, CategoryBadge } from '../components/shared/S
 import { BeforeAfterModal } from '../components/shared/BeforeAfterModal';
 import { AssignedBadge } from '../components/shared/AssignedBadge';
 import { DuplicateBadge } from '../components/shared/DuplicateBadge';
+import { WorkProgressBar } from '../components/shared/WorkProgressBar';
+import { BrandLogo } from '../components/shared/BrandLogo';
 import { getLocalizedIssueCopy, getLocalizedStateName } from '../utils/issueLocalization';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { getStateQualityRatings } from '../utils/stateQuality';
@@ -55,7 +57,7 @@ export default function NGOPortal() {
 
   const handleRaiseRequest = (issueId: string) => {
     if (!currentUser) return;
-    if (requestedIssueIds.has(issueId)) { alert('You have already raised a request for this issue.'); return; }
+    if (requestedIssueIds.has(issueId)) { alert(t('ngo.request.duplicate')); return; }
     const newReq: NgoRequest = {
       id: 'nr-' + Date.now(),
       issueId,
@@ -65,7 +67,7 @@ export default function NGOPortal() {
       createdAt: new Date().toISOString(),
     };
     addNgoRequest(newReq);
-    alert('✅ Request raised successfully! Authority will review and respond shortly.');
+    alert(t('ngo.request.success'));
   };
 
   const handleDonation = (e: React.FormEvent) => {
@@ -87,10 +89,10 @@ export default function NGOPortal() {
 
   // Analytics data
   const catData = [
-    { name: 'Road', value: issues.filter(i => i.category === 'road').length, color: '#0B1C2D' },
-    { name: 'Water', value: issues.filter(i => i.category === 'water').length, color: '#3B82F6' },
-    { name: 'Electricity', value: issues.filter(i => i.category === 'electricity').length, color: '#F59E0B' },
-    { name: 'Sanitation', value: issues.filter(i => i.category === 'sanitation').length, color: '#22C55E' },
+    { name: t('category.road'), value: issues.filter(i => i.category === 'road').length, color: '#0B1C2D' },
+    { name: t('category.water'), value: issues.filter(i => i.category === 'water').length, color: '#3B82F6' },
+    { name: t('category.electricity'), value: issues.filter(i => i.category === 'electricity').length, color: '#F59E0B' },
+    { name: t('category.sanitation'), value: issues.filter(i => i.category === 'sanitation').length, color: '#22C55E' },
   ];
 
   const stateQualityRatings = getStateQualityRatings(issues);
@@ -101,16 +103,16 @@ export default function NGOPortal() {
   }));
 
   const urgencyData = [
-    { name: 'High', value: issues.filter(i => i.urgencyTag === 'High' && i.status !== 'resolved').length, color: '#EF4444' },
-    { name: 'Medium', value: issues.filter(i => i.urgencyTag === 'Medium' && i.status !== 'resolved').length, color: '#F59E0B' },
-    { name: 'Low', value: issues.filter(i => i.urgencyTag === 'Low' && i.status !== 'resolved').length, color: '#22C55E' },
+    { name: t('urgency.high'), value: issues.filter(i => i.urgencyTag === 'High' && i.status !== 'resolved').length, color: '#EF4444' },
+    { name: t('urgency.medium'), value: issues.filter(i => i.urgencyTag === 'Medium' && i.status !== 'resolved').length, color: '#F59E0B' },
+    { name: t('urgency.low'), value: issues.filter(i => i.urgencyTag === 'Low' && i.status !== 'resolved').length, color: '#22C55E' },
   ];
 
   const tabs = [
-    { key: 'issues', label: 'Unresolved Issues', emoji: '📋' },
-    { key: 'requests', label: 'My Requests', emoji: '📝' },
-    { key: 'analytics', label: 'Analytics', emoji: '📊' },
-    { key: 'donations', label: 'Donations', emoji: '💰' },
+    { key: 'issues', label: t('ngo.tab.issues'), emoji: '📋' },
+    { key: 'requests', label: t('ngo.tab.requests'), emoji: '📝' },
+    { key: 'analytics', label: t('ngo.tab.analytics'), emoji: '📊' },
+    { key: 'donations', label: t('ngo.tab.donations'), emoji: '💰' },
   ];
 
   if (!currentUser) return null;
@@ -126,7 +128,7 @@ export default function NGOPortal() {
             <button key={tab.key} onClick={() => setActiveTab(tab.key as any)}
               className="flex items-center gap-2 px-5 py-3.5 text-sm whitespace-nowrap transition-all"
               style={{ color: activeTab === tab.key ? '#0B1C2D' : '#6B7280', borderBottom: activeTab === tab.key ? '3px solid #E8821C' : '3px solid transparent', fontWeight: activeTab === tab.key ? 600 : 400, background: 'transparent' }}>
-              <span>{tab.emoji}</span> {t(`ngo.tab.${tab.key}`)}
+              <span>{tab.emoji}</span> {tab.label}
             </button>
           ))}
         </div>
@@ -139,29 +141,36 @@ export default function NGOPortal() {
             <div className="flex flex-wrap gap-3 mb-5">
               <select className="px-3 py-2 rounded-xl text-sm border-2 outline-none" style={{ borderColor: '#E2E8F0', background: '#F8FAFC' }}
                 value={filterState} onChange={e => setFilterState(e.target.value)}>
-                <option value="all">All States</option>
+                <option value="all">{t('select.state')}</option>
                 {allStates.map(s => <option key={s} value={s}>{getLocalizedStateName(s, language)}</option>)}
               </select>
               <select className="px-3 py-2 rounded-xl text-sm border-2 outline-none" style={{ borderColor: '#E2E8F0', background: '#F8FAFC' }}
                 value={filterCat} onChange={e => setFilterCat(e.target.value)}>
-                <option value="all">All Categories</option>
-                <option value="road">🛣️ Road</option>
-                <option value="water">💧 Water</option>
-                <option value="electricity">⚡ Electricity</option>
-                <option value="sanitation">🗑️ Sanitation</option>
+                <option value="all">{t('common.allCategories')}</option>
+                <option value="road">🛣️ {t('category.road')}</option>
+                <option value="water">💧 {t('category.water')}</option>
+                <option value="electricity">⚡ {t('category.electricity')}</option>
+                <option value="sanitation">🗑️ {t('category.sanitation')}</option>
               </select>
               <select className="px-3 py-2 rounded-xl text-sm border-2 outline-none" style={{ borderColor: '#E2E8F0', background: '#F8FAFC' }}
                 value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
-                <option value="all">All Statuses</option>
-                <option value="awaiting_citizen_verification">Awaiting Citizen Verification</option>
-                <option value="unresolved">⚠️ Unresolved</option>
-                <option value="resolved">✅ Resolved</option>
+                <option value="all">{t('common.allStatuses')}</option>
+                <option value="awaiting_citizen_verification">{t('status.awaiting_citizen_verification')}</option>
+                <option value="unresolved">⚠️ {t('common.unresolved')}</option>
+                <option value="resolved">✅ {t('status.resolved')}</option>
               </select>
-              <div className="ml-auto text-sm text-gray-500 self-center">{unresolvedIssues.length} issues</div>
+              <div className="ml-auto text-sm text-gray-500 self-center">{t('common.issueCount', { count: unresolvedIssues.length })}</div>
             </div>
 
             <div className="grid gap-4">
-              {unresolvedIssues.length === 0 && <div className="text-center py-16 text-gray-400">No unresolved issues found.</div>}
+              {unresolvedIssues.length === 0 && (
+                <div className="text-center py-20 bg-white rounded-2xl border-2 border-dashed border-gray-200">
+                  <div className="flex justify-center mb-4 opacity-30">
+                    <BrandLogo size="lg" />
+                  </div>
+                  <p className="text-gray-400">{t('ngo.issues.noIssues')}</p>
+                </div>
+              )}
               {unresolvedIssues.map(issue => {
                 const hasRequest = requestedIssueIds.has(issue.id);
                 const myReq = myRequests.find(r => r.issueId === issue.id);
@@ -180,6 +189,12 @@ export default function NGOPortal() {
                           <DuplicateBadge count={issue.duplicateCount} />
                         </div>
                         <p className="text-gray-500 text-xs">📍 {getLocalizedIssueCopy(issue, language).address}, {getLocalizedIssueCopy(issue, language).city}, {getLocalizedIssueCopy(issue, language).state}</p>
+                        
+                        {/* Progress Bar */}
+                        <div className="mt-3 p-3 bg-gray-50 rounded-xl" style={{ border: '1px solid #E2E8F0' }}>
+                          <WorkProgressBar currentPercent={issue.currentPercent} />
+                        </div>
+
                         <p className="text-gray-600 text-sm mt-1 line-clamp-2">{getLocalizedIssueCopy(issue, language).description}</p>
                       </div>
                     </div>
@@ -187,20 +202,20 @@ export default function NGOPortal() {
                       <span className="text-xs text-gray-500">👍 {issue.upvotes} | 📅 {new Date(issue.createdAt).toLocaleDateString('en-IN')}</span>
                       <button onClick={() => setBeforeAfterIssue(issue)}
                         className="px-3 py-1.5 rounded-full text-xs" style={{ background: '#EFF6FF', color: '#1D4ED8' }}>
-                        🔍 B/A
+                        🔍 {t('beforeAfter.title')}
                       </button>
                       {hasRequest ? (
                         <span className={`ml-auto px-3 py-1.5 rounded-full text-xs font-medium`} style={{
                           background: myReq?.status === 'approved' ? '#F0FDF4' : myReq?.status === 'rejected' ? '#FEF2F2' : '#FEF9C3',
                           color: myReq?.status === 'approved' ? '#15803D' : myReq?.status === 'rejected' ? '#991B1B' : '#92400E',
                         }}>
-                          {myReq?.status === 'approved' ? '✅ Approved' : myReq?.status === 'rejected' ? '❌ Rejected' : '⏳ Pending'}
+                          {myReq?.status === 'approved' ? `✅ ${t('status.approved')}` : myReq?.status === 'rejected' ? `❌ ${t('status.rejected')}` : `⏳ ${t('ngo.request.pending')}`}
                         </span>
                       ) : (
                         <button onClick={() => handleRaiseRequest(issue.id)}
                           className="ml-auto px-4 py-1.5 rounded-full text-sm text-white hover:opacity-90 transition-all"
                           style={{ background: '#0B1C2D', fontWeight: 500 }}>
-                          🤝 Raise Request
+                          🤝 {t('ngo.request.raise')}
                         </button>
                       )}
                     </div>
@@ -216,9 +231,9 @@ export default function NGOPortal() {
           <div>
             <div className="grid grid-cols-3 gap-4 mb-6">
               {[
-                { label: 'Total Requests', value: myRequests.length, color: '#0B1C2D', bg: '#F8FAFC' },
-                { label: 'Approved', value: myRequests.filter(r => r.status === 'approved').length, color: '#15803D', bg: '#F0FDF4' },
-                { label: 'Pending', value: myRequests.filter(r => r.status === 'pending').length, color: '#B45309', bg: '#FFFBEB' },
+                { label: t('ngo.request.kpi.total'), value: myRequests.length, color: '#0B1C2D', bg: '#F8FAFC' },
+                { label: t('status.approved'), value: myRequests.filter(r => r.status === 'approved').length, color: '#15803D', bg: '#F0FDF4' },
+                { label: t('ngo.request.pending'), value: myRequests.filter(r => r.status === 'pending').length, color: '#B45309', bg: '#FFFBEB' },
               ].map(s => (
                 <div key={s.label} className="rounded-2xl p-4 text-center shadow-sm" style={{ background: s.bg }}>
                   <p style={{ fontSize: '2rem', fontWeight: 700, color: s.color }}>{s.value}</p>
@@ -228,7 +243,7 @@ export default function NGOPortal() {
             </div>
 
             <div className="space-y-4">
-              {myRequests.length === 0 && <div className="text-center py-16 text-gray-400">No requests raised yet. Browse unresolved issues to raise requests.</div>}
+              {myRequests.length === 0 && <div className="text-center py-16 text-gray-400">{t('ngo.request.noRequests')}</div>}
               {myRequests.map(req => {
                 const issue = issues.find(i => i.id === req.issueId);
                 if (!issue) return null;
@@ -244,7 +259,7 @@ export default function NGOPortal() {
                             color: req.status === 'approved' ? '#15803D' : req.status === 'rejected' ? '#991B1B' : '#92400E',
                             border: `1px solid ${req.status === 'approved' ? '#BBF7D0' : req.status === 'rejected' ? '#FECACA' : '#FDE68A'}`,
                           }}>
-                            {req.status === 'approved' ? '✅ Approved' : req.status === 'rejected' ? '❌ Rejected' : '⏳ Pending'}
+                            {req.status === 'approved' ? `✅ ${t('status.approved')}` : req.status === 'rejected' ? `❌ ${t('status.rejected')}` : `⏳ ${t('ngo.request.pending')}`}
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
@@ -252,7 +267,7 @@ export default function NGOPortal() {
                           <DuplicateBadge count={issue.duplicateCount} />
                         </div>
                         <p className="text-gray-500 text-xs">📍 {getLocalizedIssueCopy(issue, language).city}, {getLocalizedIssueCopy(issue, language).state}</p>
-                        <p className="text-gray-400 text-xs mt-1">Requested: {new Date(req.createdAt).toLocaleDateString('en-IN')}</p>
+                        <p className="text-gray-400 text-xs mt-1">{t('ngo.request.at')}: {new Date(req.createdAt).toLocaleDateString('en-IN')}</p>
                       </div>
                     </div>
                   </div>
@@ -268,10 +283,10 @@ export default function NGOPortal() {
             {/* Summary KPIs */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               {[
-                { label: 'Total Issues', value: issues.length, icon: '📌', bg: '#EFF6FF', text: '#1D4ED8' },
-                { label: 'Unresolved', value: issues.filter(i => i.status !== 'resolved').length, icon: '⚠️', bg: '#FEF2F2', text: '#991B1B' },
-                { label: 'Resolved', value: issues.filter(i => i.status === 'resolved').length, icon: '✅', bg: '#F0FDF4', text: '#15803D' },
-                { label: 'NGO Participation', value: ngoRequests.filter(r => r.status === 'approved').length, icon: '🤝', bg: '#FFF7ED', text: '#C2410C' },
+                { label: t('authority.kpi.total'), value: issues.length, icon: '📌', bg: '#EFF6FF', text: '#1D4ED8' },
+                { label: t('common.unresolved'), value: issues.filter(i => i.status !== 'resolved').length, icon: '⚠️', bg: '#FEF2F2', text: '#991B1B' },
+                { label: t('authority.kpi.resolved'), value: issues.filter(i => i.status === 'resolved').length, icon: '✅', bg: '#F0FDF4', text: '#15803D' },
+                { label: t('ngo.analytics.participation'), value: ngoRequests.filter(r => r.status === 'approved').length, icon: '🤝', bg: '#FFF7ED', text: '#C2410C' },
               ].map(s => (
                 <div key={s.label} className="rounded-2xl p-4 text-center shadow-sm" style={{ background: s.bg }}>
                   <div className="text-2xl mb-1">{s.icon}</div>
@@ -284,13 +299,13 @@ export default function NGOPortal() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Category Distribution */}
               <div className="bg-white rounded-2xl p-5 shadow-sm" style={{ border: '1px solid #E2E8F0' }}>
-                <h3 className="mb-4" style={{ color: '#0B1C2D', fontWeight: 600 }}>📊 Category Distribution</h3>
+                <h3 className="mb-4" style={{ color: '#0B1C2D', fontWeight: 600 }}>📊 {t('ngo.analytics.catDist')}</h3>
                 <ResponsiveContainer width="100%" height={220}>
                   <PieChart>
                     <Pie data={catData} cx="50%" cy="50%" outerRadius={80} dataKey="value" label={({ name, value }) => `${name}: ${value}`} labelLine={false} fontSize={11}>
                       {catData.map((entry) => <Cell key={`cat-${entry.name}`} fill={entry.color} />)}
                     </Pie>
-                    <Tooltip formatter={(v: any) => [v, 'Issues']} />
+                    <Tooltip formatter={(v: any) => [v, t('ngo.analytics.issues')]} />
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="flex flex-wrap gap-2 mt-2">
@@ -305,20 +320,20 @@ export default function NGOPortal() {
 
               {/* Urgency Distribution */}
               <div className="bg-white rounded-2xl p-5 shadow-sm" style={{ border: '1px solid #E2E8F0' }}>
-                <h3 className="mb-4" style={{ color: '#0B1C2D', fontWeight: 600 }}>🚨 Urgency Distribution (Active)</h3>
+                <h3 className="mb-4" style={{ color: '#0B1C2D', fontWeight: 600 }}>🚨 {t('ngo.analytics.urgDist')}</h3>
                 <ResponsiveContainer width="100%" height={220}>
                   <PieChart>
                     <Pie data={urgencyData} cx="50%" cy="50%" outerRadius={80} dataKey="value" label={({ name, value }) => `${name}: ${value}`} labelLine={false} fontSize={11}>
                       {urgencyData.map((entry) => <Cell key={`urgency-${entry.name}`} fill={entry.color} />)}
                     </Pie>
-                    <Tooltip formatter={(v: any) => [v, 'Issues']} />
+                    <Tooltip formatter={(v: any) => [v, t('ngo.analytics.issues')]} />
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="flex flex-wrap gap-3 mt-2">
                   {urgencyData.map(u => (
                     <span key={u.name} className="flex items-center gap-1 text-xs">
                       <span className="w-3 h-3 rounded-full inline-block" style={{ background: u.color }} />
-                      {u.name} Urgency: {u.value}
+                      {u.name}: {u.value}
                     </span>
                   ))}
                 </div>
@@ -327,11 +342,11 @@ export default function NGOPortal() {
 
             {/* State Analytics */}
             <div className="bg-white rounded-2xl p-5 shadow-sm" style={{ border: '1px solid #E2E8F0' }}>
-              <h3 className="mb-4" style={{ color: '#0B1C2D', fontWeight: 600 }}>🗺️ State-wise Issue Analytics</h3>
+              <h3 className="mb-4" style={{ color: '#0B1C2D', fontWeight: 600 }}>🗺️ {t('ngo.analytics.stateAnalytics')}</h3>
               <div className="flex flex-wrap items-end justify-between gap-3 mb-4">
-                <p className="text-sm text-gray-500">Past performance score based on resolved outcomes, citizen ratings, trust signals, and pending verification load.</p>
+                <p className="text-sm text-gray-500">{t('ngo.analytics.stateDesc')}</p>
                 {stateQualityRatings[0] && <div className="px-4 py-2 rounded-2xl text-sm" style={{ background: '#F0FDF4', color: '#15803D', border: '1px solid #BBF7D0', fontWeight: 600 }}>
-                  Top state: {getLocalizedStateName(stateQualityRatings[0].state, language)} ({stateQualityRatings[0].qualityScore}/100)
+                  {t('ngo.analytics.topState')}: {getLocalizedStateName(stateQualityRatings[0].state, language)} ({stateQualityRatings[0].qualityScore}/100)
                 </div>}
               </div>
               <ResponsiveContainer width="100%" height={260}>
@@ -340,8 +355,8 @@ export default function NGOPortal() {
                   <YAxis tick={{ fontSize: 11 }} domain={[0, 100]} />
                   <Tooltip />
                   <Legend />
-                  <Bar dataKey="quality" name="Quality Score" fill="#0B1C2D" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="resolved" name="Resolved Issues" fill="#22C55E" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="quality" name={t('ngo.analytics.quality')} fill="#0B1C2D" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="resolved" name={t('ngo.analytics.resolvedCount')} fill="#22C55E" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
               <div className="grid gap-3 mt-4">
@@ -354,7 +369,7 @@ export default function NGOPortal() {
                         </div>
                         <div>
                           <p style={{ color: '#0B1C2D', fontWeight: 600 }}>{getLocalizedStateName(rating.state, language)}</p>
-                          <p className="text-xs text-gray-500">{rating.resolvedIssues}/{rating.totalIssues} resolved • Rating {rating.averageRating}/5 • Trust {rating.trustRate}%</p>
+                          <p className="text-xs text-gray-500">{rating.resolvedIssues}/{rating.totalIssues} {t('ngo.analytics.resolvedShort')} • {t('ngo.analytics.ratingShort')} {rating.averageRating}/5 • {t('ngo.analytics.trustShort')} {rating.trustRate}%</p>
                         </div>
                       </div>
                       <div className="text-right">
@@ -371,13 +386,13 @@ export default function NGOPortal() {
 
             {/* NGO Participation */}
             <div className="bg-white rounded-2xl p-5 shadow-sm" style={{ border: '1px solid #E2E8F0' }}>
-              <h3 className="mb-3" style={{ color: '#0B1C2D', fontWeight: 600 }}>🤝 NGO Participation Stats</h3>
+              <h3 className="mb-3" style={{ color: '#0B1C2D', fontWeight: 600 }}>🤝 {t('ngo.analytics.participation')}</h3>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {[
-                  { label: 'Requests Raised', value: ngoRequests.length },
-                  { label: 'Approved', value: ngoRequests.filter(r => r.status === 'approved').length },
-                  { label: 'Pending', value: ngoRequests.filter(r => r.status === 'pending').length },
-                  { label: 'Rejected', value: ngoRequests.filter(r => r.status === 'rejected').length },
+                  { label: t('ngo.analytics.reqRaised'), value: ngoRequests.length },
+                  { label: t('status.approved'), value: ngoRequests.filter(r => r.status === 'approved').length },
+                  { label: t('ngo.request.pending'), value: ngoRequests.filter(r => r.status === 'pending').length },
+                  { label: t('status.rejected'), value: ngoRequests.filter(r => r.status === 'rejected').length },
                 ].map(s => (
                   <div key={s.label} className="p-3 rounded-xl text-center" style={{ background: '#F8FAFC' }}>
                     <p style={{ fontSize: '1.5rem', fontWeight: 700, color: '#0B1C2D' }}>{s.value}</p>
@@ -396,10 +411,10 @@ export default function NGOPortal() {
             <div className="rounded-2xl p-6 shadow-sm" style={{ background: 'linear-gradient(135deg, #0B1C2D, #1E3A5F)' }}>
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-blue-200 text-sm">Total Donations Received</p>
+                  <p className="text-blue-200 text-sm">{t('ngo.donations.total')}</p>
                   <p className="text-white" style={{ fontSize: '2.5rem', fontWeight: 800 }}>₹{totalDonations.toLocaleString('en-IN')}</p>
-                  <p className="text-blue-300 text-sm">{myDonations.length} contributions</p>
-                  <p className="text-blue-400 text-xs mt-2">💡 Citizens can donate via the home page</p>
+                  <p className="text-blue-300 text-sm">{myDonations.length} {t('ngo.donations.contributions')}</p>
+                  <p className="text-blue-400 text-xs mt-2">💡 {t('ngo.donations.tip')}</p>
                 </div>
                 <div className="text-6xl opacity-20">💰</div>
               </div>
@@ -407,7 +422,7 @@ export default function NGOPortal() {
 
             {/* Donation History */}
             <div className="bg-white rounded-2xl shadow-sm p-5" style={{ border: '1px solid #E2E8F0' }}>
-              <h3 className="mb-4" style={{ color: '#0B1C2D', fontWeight: 600 }}>📜 Donation History</h3>
+              <h3 className="mb-4" style={{ color: '#0B1C2D', fontWeight: 600 }}>📜 {t('ngo.donations.history')}</h3>
               <div className="space-y-3">
                 {myDonations.map(d => (
                   <div key={d.id} className="flex items-center gap-4 p-4 rounded-xl" style={{ background: '#F8FAFC', border: '1px solid #E2E8F0' }}>
@@ -430,12 +445,12 @@ export default function NGOPortal() {
 
       {/* Donation Modal */}
       {donationModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)' }}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto" style={{ background: 'rgba(0,0,0,0.7)' }} onClick={() => setDonationModal(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between p-5" style={{ background: '#0B1C2D' }}>
               <div>
-                <h3 className="text-white" style={{ fontWeight: 700 }}>💰 Demo Donation</h3>
-                <p className="text-blue-300 text-xs">This is a demo — no real payment processed</p>
+                <h3 className="text-white" style={{ fontWeight: 700 }}>💰 {t('ngo.donationModal.title')}</h3>
+                <p className="text-blue-300 text-xs">{t('ngo.donationModal.demo')}</p>
               </div>
               <button onClick={() => setDonationModal(false)} className="text-white text-2xl">×</button>
             </div>
@@ -443,21 +458,21 @@ export default function NGOPortal() {
               {donationSuccess ? (
                 <div className="text-center py-8">
                   <div className="text-6xl mb-4">🎉</div>
-                  <h3 style={{ color: '#15803D', fontWeight: 700 }}>Donation Successful!</h3>
-                  <p className="text-gray-500 text-sm mt-2">Thank you for supporting {currentUser.ngoName}!</p>
+                  <h3 style={{ color: '#15803D', fontWeight: 700 }}>{t('ngo.donationModal.success')}</h3>
+                  <p className="text-gray-500 text-sm mt-2">{t('ngo.donationModal.successMsg', { name: currentUser.ngoName })}</p>
                 </div>
               ) : (
                 <form onSubmit={handleDonation} className="space-y-4">
                   <div className="p-3 rounded-xl text-xs text-center" style={{ background: '#FFF7ED', color: '#92400E', border: '1px solid #FED7AA' }}>
-                    ⚠️ DEMO ONLY — No real payment will be processed
+                    ⚠️ {t('ngo.donationModal.demoNotice')}
                   </div>
                   <div>
-                    <label className="block text-sm mb-1.5" style={{ fontWeight: 500 }}>Donor Name</label>
+                    <label className="block text-sm mb-1.5" style={{ fontWeight: 500 }}>{t('ngo.donationModal.donor')}</label>
                     <input required className="w-full px-4 py-2.5 rounded-xl border-2 outline-none" style={{ borderColor: '#E2E8F0', background: '#F8FAFC' }}
-                      placeholder="Your name" value={donationForm.name} onChange={e => setDonationForm(p => ({ ...p, name: e.target.value }))} />
+                      placeholder={t('ngo.donationModal.donorPlaceholder')} value={donationForm.name} onChange={e => setDonationForm(p => ({ ...p, name: e.target.value }))} />
                   </div>
                   <div>
-                    <label className="block text-sm mb-1.5" style={{ fontWeight: 500 }}>Amount (₹)</label>
+                    <label className="block text-sm mb-1.5" style={{ fontWeight: 500 }}>{t('ngo.donationModal.amountLabel')}</label>
                     <div className="flex gap-2 mb-2">
                       {[500, 1000, 5000, 10000].map(amt => (
                         <button key={amt} type="button" onClick={() => setDonationForm(p => ({ ...p, amount: amt.toString() }))}
@@ -468,30 +483,30 @@ export default function NGOPortal() {
                       ))}
                     </div>
                     <input required type="number" min="1" className="w-full px-4 py-2.5 rounded-xl border-2 outline-none" style={{ borderColor: '#E2E8F0', background: '#F8FAFC' }}
-                      placeholder="Or enter custom amount" value={donationForm.amount} onChange={e => setDonationForm(p => ({ ...p, amount: e.target.value }))} />
+                      placeholder={t('ngo.donationModal.customPlaceholder')} value={donationForm.amount} onChange={e => setDonationForm(p => ({ ...p, amount: e.target.value }))} />
                   </div>
                   <div>
-                    <label className="block text-sm mb-1.5" style={{ fontWeight: 500 }}>Card Number (Demo)</label>
+                    <label className="block text-sm mb-1.5" style={{ fontWeight: 500 }}>{t('ngo.donationModal.card')}</label>
                     <input readOnly className="w-full px-4 py-2.5 rounded-xl border-2 outline-none" style={{ borderColor: '#E2E8F0', background: '#F0F0F0', fontFamily: 'monospace', color: '#6B7280' }}
                       value={donationForm.card} />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-sm mb-1.5" style={{ fontWeight: 500 }}>Expiry</label>
+                      <label className="block text-sm mb-1.5" style={{ fontWeight: 500 }}>{t('ngo.donationModal.expiry')}</label>
                       <input readOnly className="w-full px-4 py-2.5 rounded-xl border-2 outline-none" style={{ borderColor: '#E2E8F0', background: '#F0F0F0', color: '#6B7280' }} value={donationForm.expiry} />
                     </div>
                     <div>
-                      <label className="block text-sm mb-1.5" style={{ fontWeight: 500 }}>CVV</label>
+                      <label className="block text-sm mb-1.5" style={{ fontWeight: 500 }}>{t('ngo.donationModal.cvv')}</label>
                       <input readOnly className="w-full px-4 py-2.5 rounded-xl border-2 outline-none" style={{ borderColor: '#E2E8F0', background: '#F0F0F0', color: '#6B7280' }} value={donationForm.cvv} />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm mb-1.5" style={{ fontWeight: 500 }}>Message (optional)</label>
+                    <label className="block text-sm mb-1.5" style={{ fontWeight: 500 }}>{t('ngo.donationModal.message')}</label>
                     <input className="w-full px-4 py-2.5 rounded-xl border-2 outline-none" style={{ borderColor: '#E2E8F0', background: '#F8FAFC' }}
-                      placeholder="Supporting civic improvement..." value={donationForm.message} onChange={e => setDonationForm(p => ({ ...p, message: e.target.value }))} />
+                      placeholder={t('ngo.donationModal.messagePlaceholder')} value={donationForm.message} onChange={e => setDonationForm(p => ({ ...p, message: e.target.value }))} />
                   </div>
                   <button type="submit" className="w-full py-3.5 rounded-xl text-white hover:opacity-90 transition-all" style={{ background: '#0B1C2D', fontWeight: 600 }}>
-                    💰 Donate ₹{donationForm.amount ? parseInt(donationForm.amount).toLocaleString('en-IN') : '0'} (Demo)
+                    💰 {t('ngo.donationModal.submit', { amount: donationForm.amount ? parseInt(donationForm.amount).toLocaleString('en-IN') : '0' })}
                   </button>
                 </form>
               )}
@@ -502,22 +517,24 @@ export default function NGOPortal() {
 
       {/* Profile Modal */}
       {profileOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)' }}>
-          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)' }} onClick={() => setProfileOpen(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
-              <h3 style={{ color: '#0B1C2D', fontWeight: 700 }}>NGO Profile</h3>
+              <h3 style={{ color: '#0B1C2D', fontWeight: 700 }}>{t('ngo.profile.title')}</h3>
               <button onClick={() => setProfileOpen(false)} className="text-gray-400 text-xl">×</button>
             </div>
             <div className="text-center mb-4">
-              <div className="text-5xl mb-2">👥</div>
+              <div className="flex justify-center mb-3">
+                <BrandLogo size="md" />
+              </div>
               <p style={{ fontWeight: 700, color: '#0B1C2D' }}>{currentUser.ngoName}</p>
               <p className="text-sm text-gray-500">{currentUser.fullName}</p>
               <p className="text-xs text-gray-400">{currentUser.email}</p>
               <p className="text-xs text-gray-400 mt-1" style={{ fontFamily: 'monospace' }}>{currentUser.registrationId}</p>
             </div>
             <div className="p-4 rounded-xl text-center" style={{ background: '#F0FDF4' }}>
-              <p className="text-sm text-green-700">⭐ Platform Rating: {currentUser.rating}/5.0</p>
-              <p className="text-xs text-green-600 mt-1">Total Donations: ₹{totalDonations.toLocaleString('en-IN')}</p>
+              <p className="text-sm text-green-700">⭐ {t('ngo.profile.rating')}: {currentUser.rating}/5.0</p>
+              <p className="text-xs text-green-600 mt-1">{t('ngo.donations.received')}: ₹{totalDonations.toLocaleString('en-IN')}</p>
             </div>
           </div>
         </div>

@@ -9,6 +9,8 @@ import { BeforeAfterModal } from '../components/shared/BeforeAfterModal';
 import { AssignedBadge } from '../components/shared/AssignedBadge';
 import { DonationModal } from '../components/shared/DonationModal';
 import { DuplicateBadge } from '../components/shared/DuplicateBadge';
+import { WorkProgressBar } from '../components/shared/WorkProgressBar';
+import { BrandLogo } from '../components/shared/BrandLogo';
 import { getLocalizedCityName, getLocalizedIssueCopy, getLocalizedStateName } from '../utils/issueLocalization';
 
 const STATES = ['Delhi', 'Maharashtra', 'Karnataka', 'Tamil Nadu', 'Gujarat', 'Rajasthan', 'Telangana', 'West Bengal', 'Uttar Pradesh', 'Madhya Pradesh'];
@@ -40,7 +42,7 @@ const normalizeDetectedState = (raw: string) => STATES.find(state => {
 
 export default function CitizenPortal() {
   const navigate = useNavigate();
-  const { currentUser, issues, voteOnIssue, addIssue, rateContractor, verifyIssueResolution, comments } = useApp();
+  const { currentUser, issues, voteOnIssue, addIssue, rateContractor, verifyIssueResolution, comments, bids, updateUserProfile } = useApp();
   const { language, t } = useLang();
   const [activeTab, setActiveTab] = useState<TabKey>('issues');
   const [beforeAfterIssue, setBeforeAfterIssue] = useState<Issue | null>(null);
@@ -60,6 +62,8 @@ export default function CitizenPortal() {
   const [locationMessage, setLocationMessage] = useState('');
   const [messages, setMessages] = useState([{ id: 1, sender: 'support', text: 'Hello! I am the CIVICSETU assistant.', time: '10:00 AM' }]);
   const [newMessage, setNewMessage] = useState('');
+  const [showAvatarSelection, setShowAvatarSelection] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const recognitionRef = useRef<any>(null);
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
@@ -102,6 +106,28 @@ export default function CitizenPortal() {
     if (filterCategory !== 'all' && issue.category !== filterCategory) return false;
     return true;
   });
+
+  const DEFAULT_AVATARS = [
+    { id: 'male', url: '/assets/avatars/male.png', label: 'Male' },
+    { id: 'female', url: '/assets/avatars/female.png', label: 'Female' },
+  ];
+
+  const handleAvatarSelect = (url: string) => {
+    updateUserProfile(url);
+    setShowAvatarSelection(false);
+  };
+
+  const handleCustomUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        updateUserProfile(reader.result as string);
+        setShowAvatarSelection(false);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const detectCurrentLocation = (automatic = false) => {
     if (!navigator.geolocation) {
@@ -208,13 +234,13 @@ export default function CitizenPortal() {
       <div className="sticky top-14 z-30 bg-white shadow-sm" style={{ borderBottom: '1px solid #E2E8F0' }}>
         <div className="max-w-4xl mx-auto flex overflow-x-auto">
           {([
-            { key: 'issues', label: t('citizen.tab.issues'), emoji: 'I' },
-            { key: 'report', label: t('citizen.tab.report'), emoji: '+' },
-            { key: 'chat', label: t('citizen.tab.chat'), emoji: 'C' },
-            { key: 'profile', label: t('citizen.tab.profile'), emoji: 'P' },
-          ] as { key: TabKey; label: string; emoji: string }[]).map(tab => (
+            { key: 'issues', label: t('citizen.tab.issues') },
+            { key: 'report', label: t('citizen.tab.report') },
+            { key: 'chat', label: t('citizen.tab.chat') },
+            { key: 'profile', label: t('citizen.tab.profile') },
+          ] as { key: TabKey; label: string }[]).map(tab => (
             <button key={tab.key} onClick={() => setActiveTab(tab.key)} className="px-5 py-3.5 text-sm whitespace-nowrap" style={{ color: activeTab === tab.key ? '#0B1C2D' : '#6B7280', borderBottom: activeTab === tab.key ? '3px solid #E8821C' : '3px solid transparent', fontWeight: activeTab === tab.key ? 600 : 400 }}>
-              {tab.emoji} {tab.label}
+              {tab.label}
             </button>
           ))}
         </div>
@@ -304,16 +330,185 @@ export default function CitizenPortal() {
         </form>}
         {activeTab === 'chat' && <div className="bg-white rounded-2xl shadow-sm overflow-hidden" style={{ border: '1px solid #E2E8F0', height: '70vh', display: 'flex', flexDirection: 'column' }}>
           <div className="px-4 py-3" style={{ background: '#0B1C2D' }}><p className="text-white" style={{ fontWeight: 600 }}>{t('citizen.chat.support')}</p><span className="text-green-300 text-xs">{t('common.online')}</span></div>
-          <div className="flex-1 overflow-y-auto p-4 space-y-3" style={{ background: '#ECE5DD' }}>{messages.map(message => <div key={message.id} className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}><div className="max-w-xs sm:max-w-md rounded-2xl px-4 py-2.5 shadow-sm" style={{ background: message.sender === 'user' ? '#DCF8C6' : '#FFFFFF' }}><p className="text-sm">{message.text}</p><p className="text-right text-xs mt-1 text-gray-400">{message.time}</p></div></div>)}<div ref={endRef} /></div>
+          <div className="flex-1 overflow-y-auto p-4 space-y-3" style={{ background: '#ECE5DD' }}>
+            {messages.map(message => (
+              <div key={message.id} className={`flex gap-2 ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
+                {message.sender === 'support' && <BrandLogo size="sm" className="flex-shrink-0 mt-1" />}
+                <div className="max-w-xs sm:max-w-md rounded-2xl px-4 py-2.5 shadow-sm" style={{ background: message.sender === 'user' ? '#DCF8C6' : '#FFFFFF' }}>
+                  <p className="text-sm">{message.text}</p>
+                  <p className="text-right text-xs mt-1 text-gray-400">{message.time}</p>
+                </div>
+              </div>
+            ))}
+            <div ref={endRef} />
+          </div>
           <div className="p-3 flex gap-2" style={{ background: '#F0F0F0' }}><input className="flex-1 px-4 py-2.5 rounded-full text-sm outline-none" style={{ background: 'white', border: '1px solid #E2E8F0' }} value={newMessage} onChange={event => setNewMessage(event.target.value)} onKeyDown={event => event.key === 'Enter' && sendMessage()} placeholder={t('citizen.chat.placeholder')} /><button onClick={sendMessage} className="w-10 h-10 rounded-full text-white" style={{ background: '#25D366' }}>➤</button></div>
         </div>}
-        {activeTab === 'profile' && <div className="grid gap-4">
-          <div className="bg-white rounded-2xl shadow-sm p-6" style={{ border: '1px solid #E2E8F0' }}><h2 style={{ color: '#0B1C2D', fontWeight: 700 }}>{currentUser.fullName}</h2><p className="text-sm text-gray-500">{currentUser.email}</p><p className="text-xs text-gray-400 mb-4">{currentUser.phone}</p><div className="grid grid-cols-1 sm:grid-cols-2 gap-4">{[{ label: t('citizen.profile.trustCode'), value: currentUser.trustCode || 'N/A' }, { label: t('citizen.profile.location'), value: `${getLocalizedCityName(currentUser.city, language)}, ${getLocalizedStateName(currentUser.state, language)}` }, { label: t('citizen.profile.role'), value: t('citizen.profile.verifiedCitizen') }, { label: t('citizen.profile.issues'), value: myIssues.length.toString() }].map(item => <div key={item.label} className="p-4 rounded-xl" style={{ background: '#F8FAFC', border: '1px solid #E2E8F0' }}><p className="text-xs text-gray-500">{item.label}</p><p style={{ fontWeight: 600, color: '#0B1C2D' }}>{item.value}</p></div>)}</div></div>
-          <div className="bg-white rounded-2xl shadow-sm p-6" style={{ border: '1px solid #E2E8F0' }}><h3 className="mb-4" style={{ color: '#0B1C2D', fontWeight: 600 }}>{t('citizen.summary.title')}</h3><div className="grid grid-cols-3 gap-3">{[{ label: t('citizen.summary.total'), count: myIssues.length }, { label: t('citizen.summary.resolved'), count: myIssues.filter(issue => issue.status === 'resolved').length }, { label: t('citizen.summary.active'), count: myIssues.filter(issue => issue.status !== 'resolved').length }].map(item => <div key={item.label} className="p-4 rounded-xl text-center" style={{ background: '#EFF6FF' }}><p style={{ fontSize: '1.5rem', fontWeight: 700, color: '#0B1C2D' }}>{item.count}</p><p className="text-xs text-gray-500 mt-1">{item.label}</p></div>)}</div></div>
-        </div>}
+        {activeTab === 'profile' && (
+          <div className="bg-white rounded-2xl shadow-sm p-8 relative overflow-hidden" style={{ border: '1px solid #E2E8F0' }}>
+            <BrandLogo size="xl" className="absolute -top-6 -right-6 opacity-5 rotate-12" />
+            <div className="flex flex-col md:flex-row gap-8 items-start">
+              {/* Profile Picture Section */}
+              <div className="flex flex-col items-center gap-4 flex-shrink-0">
+                <div 
+                  className="relative group cursor-pointer"
+                  onClick={() => setShowAvatarSelection(!showAvatarSelection)}
+                >
+                  <div className="w-32 h-32 rounded-full border-4 border-slate-100 overflow-hidden bg-slate-50 flex items-center justify-center">
+                    {currentUser.profilePic ? (
+                      <img src={currentUser.profilePic} alt="Profile" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center text-slate-300">
+                        <span className="text-5xl">👤</span>
+                        <p className="text-[10px] font-bold mt-1 uppercase tracking-tighter">Choose Photo</p>
+                      </div>
+                    )}
+                  </div>
+                  <div className="absolute inset-0 bg-black bg-opacity-40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <span className="text-white text-[10px] font-bold uppercase tracking-widest text-center px-2">{t('common.changePhoto')}</span>
+                  </div>
+                </div>
+
+                {showAvatarSelection && (
+                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-4 w-48 shadow-lg animate-in fade-in slide-in-from-top-2 duration-200 z-10">
+                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest text-center">{t('common.selectDefault')}</p>
+                    <div className="flex gap-3 justify-center">
+                      {DEFAULT_AVATARS.map(avatar => (
+                        <button 
+                          key={avatar.id}
+                          onClick={() => handleAvatarSelect(avatar.url)}
+                          className="w-12 h-12 rounded-full border-2 border-white shadow-sm overflow-hidden hover:scale-110 transition-transform focus:ring-2 focus:ring-slate-400"
+                        >
+                          <img src={avatar.url} alt={avatar.label} className="w-full h-full object-cover" />
+                        </button>
+                      ))}
+                    </div>
+                    <div className="border-t border-slate-200 pt-3">
+                      <button 
+                        onClick={() => fileInputRef.current?.click()}
+                        className="w-full py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 transition-colors"
+                      >
+                        📁 {t('common.uploadCustom')}
+                      </button>
+                      <input 
+                        type="file" 
+                        ref={fileInputRef} 
+                        onChange={handleCustomUpload} 
+                        className="hidden" 
+                        accept="image/*" 
+                      />
+                    </div>
+                    <button 
+                      onClick={() => setShowAvatarSelection(false)}
+                      className="w-full py-1 text-[9px] font-bold uppercase text-slate-400 hover:text-slate-600"
+                    >
+                      {t('common.cancel')}
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex-1 w-full">
+                <div className="mb-6">
+                  <h2 className="text-2xl" style={{ color: '#0B1C2D', fontWeight: 700 }}>{currentUser.fullName}</h2>
+                  <p className="text-gray-500 font-medium">{currentUser.email}</p>
+                  <p className="text-sm text-gray-400 mt-1">{currentUser.phone}</p>
+                </div>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {[
+                    { label: t('citizen.profile.trustCode'), value: currentUser.trustCode || 'N/A', icon: '💎' },
+                    { label: t('citizen.profile.location'), value: `${getLocalizedCityName(currentUser.city, language)}, ${getLocalizedStateName(currentUser.state, language)}`, icon: '📍' },
+                    { label: t('citizen.profile.role'), value: t('citizen.profile.verifiedCitizen'), icon: '🛡️' },
+                    { label: t('citizen.profile.issues'), value: myIssues.length.toString(), icon: '📋' }
+                  ].map(item => (
+                    <div key={item.label} className="p-4 rounded-xl flex items-center gap-4 transition-all hover:shadow-md" style={{ background: '#F8FAFC', border: '1px solid #E2E8F0' }}>
+                      <span className="text-2xl opacity-80">{item.icon}</span>
+                      <div>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{item.label}</p>
+                        <p style={{ fontWeight: 600, color: '#0B1C2D' }}>{item.value}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="mt-8">
+              <h3 className="mb-4" style={{ color: '#0B1C2D', fontWeight: 600 }}>{t('citizen.summary.title')}</h3>
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  { label: t('citizen.summary.total'), count: myIssues.length },
+                  { label: t('citizen.summary.resolved'), count: myIssues.filter(issue => issue.status === 'resolved').length },
+                  { label: t('citizen.summary.active'), count: myIssues.filter(issue => issue.status !== 'resolved').length }
+                ].map(item => (
+                  <div key={item.label} className="p-4 rounded-xl text-center" style={{ background: '#EFF6FF' }}>
+                    <p style={{ fontSize: '1.5rem', fontWeight: 700, color: '#0B1C2D' }}>{item.count}</p>
+                    <p className="text-xs text-gray-500 mt-1">{item.label}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
       {beforeAfterIssue && <BeforeAfterModal issue={beforeAfterIssue} onClose={() => setBeforeAfterIssue(null)} />}
-      {localizedIssueDetails && <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)' }}><div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-y-auto" style={{ maxHeight: '90vh' }}><div className="flex items-center justify-between p-5" style={{ background: '#0B1C2D' }}><h3 className="text-white" style={{ fontWeight: 700 }}>{t('citizen.issues.viewDetails')}</h3><button onClick={() => setSelectedIssue(null)} className="text-white text-2xl">×</button></div><div className="p-5 space-y-4"><img src={localizedIssueDetails.beforeImage} alt={localizedIssueDetails.title} className="w-full rounded-xl object-cover" style={{ height: 200 }} /><div className="flex flex-wrap gap-2"><StatusBadge status={localizedIssueDetails.status} /><UrgencyBadge urgency={localizedIssueDetails.urgencyTag} /><CategoryBadge category={localizedIssueDetails.category} /></div><div className="flex items-center gap-2"><h2 style={{ color: '#0B1C2D', fontWeight: 700 }}>{localizedIssueDetails.title}</h2><DuplicateBadge count={localizedIssueDetails.duplicateCount} /></div><p className="text-gray-600 text-sm">{localizedIssueDetails.description}</p><div className="grid grid-cols-2 gap-3 text-sm"><div className="p-3 rounded-xl" style={{ background: '#F8FAFC' }}><p className="text-gray-400 text-xs">{t('common.location')}</p><p style={{ fontWeight: 500 }}>{localizedIssueDetails.city}, {localizedIssueDetails.state}</p></div><div className="p-3 rounded-xl" style={{ background: '#F8FAFC' }}><p className="text-gray-400 text-xs">{t('common.reportedOn')}</p><p style={{ fontWeight: 500 }}>{new Date(localizedIssueDetails.createdAt).toLocaleDateString('en-IN')}</p></div><div className="p-3 rounded-xl" style={{ background: '#F8FAFC' }}><p className="text-gray-400 text-xs">{t('common.address')}</p><p style={{ fontWeight: 500, fontSize: '0.8rem' }}>{localizedIssueDetails.address}</p></div><div className="p-3 rounded-xl" style={{ background: localizedIssueDetails.isRatingFrozen ? '#FFF7ED' : '#FFFBEB' }}><p className="text-gray-400 text-xs">{t('citizen.details.communityRating')}</p><p style={{ fontWeight: 600, color: localizedIssueDetails.isRatingFrozen ? '#9A3412' : '#B45309' }}>⭐ {localizedIssueDetails.overallRatingScore.toFixed(1)}/5 {localizedIssueDetails.isRatingFrozen ? t('citizen.details.frozen') : ''}</p></div></div>{localizedIssueDetails.isRatingFrozen && localizedIssueDetails.flaggedReviewBatch && <div className="p-4 rounded-xl" style={{ background: '#FFF7ED', border: '1px solid #FED7AA' }}><p className="text-sm" style={{ color: '#9A3412', fontWeight: 600 }}>{t('citizen.details.freezeInfo', { count: localizedIssueDetails.flaggedReviewBatch.reviewsInBatch, expected: localizedIssueDetails.flaggedReviewBatch.expectedDailyReviews.toFixed(1) })}</p><p className="text-xs mt-2" style={{ color: '#C2410C' }}>{t('citizen.details.freezeTrustedScore', { score: localizedIssueDetails.flaggedReviewBatch.frozenScore.toFixed(1) })}</p></div>}{localizedIssueDetails.afterImage && <div><div className="flex items-center justify-between mb-2"><p style={{ fontWeight: 600, color: '#0B1C2D' }}>{t('citizen.details.resolutionProof')}</p><button onClick={() => setBeforeAfterIssue(issueDetails)} className="px-3 py-1.5 rounded-full text-xs" style={{ background: '#EFF6FF', color: '#1D4ED8' }}>{t('citizen.details.reviewBeforeAfter')}</button></div><img src={localizedIssueDetails.afterImage} alt="Resolution proof" className="w-full rounded-xl object-cover" style={{ height: 180 }} /></div>}{localizedIssueDetails.status === 'awaiting_citizen_verification' && <div className="p-4 rounded-xl" style={{ background: '#FFF7ED', border: '1px solid #FED7AA' }}><p className="text-sm mb-3" style={{ color: '#9A3412', fontWeight: 600 }}>{t('citizen.details.authorityProofNotice')}</p><div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><button onClick={() => { verifyIssueResolution(localizedIssueDetails.id, true); setSelectedIssue(null); alert(t('citizen.alert.verified')); }} className="py-3 rounded-xl text-sm text-white" style={{ background: '#15803D', fontWeight: 600 }}>{t('citizen.details.verifyClose')}</button><button onClick={() => { verifyIssueResolution(localizedIssueDetails.id, false); setSelectedIssue(null); alert(t('citizen.alert.needsWork')); }} className="py-3 rounded-xl text-sm text-white" style={{ background: '#B45309', fontWeight: 600 }}>{t('citizen.details.notSolvedYet')}</button></div></div>}<div><p className="mb-2" style={{ fontWeight: 600, color: '#0B1C2D' }}>{t('common.comments')}</p>{issueComments.map(comment => <div key={comment.id} className="mb-2 p-3 rounded-xl" style={{ background: '#F8FAFC' }}><p className="text-xs text-gray-500 mb-1">{comment.userName} • {new Date(comment.createdAt).toLocaleDateString('en-IN')}</p><p className="text-sm">{comment.content}</p></div>)}{issueComments.length === 0 && <p className="text-gray-400 text-sm">{t('common.noComments')}</p>}</div></div><AssignedBadge contractorId={localizedIssueDetails.assignedContractor} ngoId={localizedIssueDetails.assignedNgo} />{localizedIssueDetails.assignedNgo && <div className="px-5 pb-5"><button onClick={() => setDonationNgoId(localizedIssueDetails.assignedNgo)} className="w-full py-3 rounded-xl text-white" style={{ background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)', fontWeight: 600 }}>{t('citizen.donate')}</button></div>}</div></div>}
+      {localizedIssueDetails && <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)' }} onClick={() => setSelectedIssue(null)}><div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-y-auto" style={{ maxHeight: '90vh' }} onClick={e => e.stopPropagation()}><div className="flex items-center justify-between p-5" style={{ background: '#0B1C2D' }}><h3 className="text-white" style={{ fontWeight: 700 }}>{t('citizen.issues.viewDetails')}</h3><button onClick={() => setSelectedIssue(null)} className="text-white text-2xl">×</button></div><div className="p-5 space-y-4"><img src={localizedIssueDetails.beforeImage} alt={localizedIssueDetails.title} className="w-full rounded-xl object-cover" style={{ height: 200 }} /><div className="flex flex-wrap gap-2"><StatusBadge status={localizedIssueDetails.status} /><UrgencyBadge urgency={localizedIssueDetails.urgencyTag} /><CategoryBadge category={localizedIssueDetails.category} /></div><div className="flex items-center gap-2"><h2 style={{ color: '#0B1C2D', fontWeight: 700 }}>{localizedIssueDetails.title}</h2><DuplicateBadge count={localizedIssueDetails.duplicateCount} /></div>
+
+<div className="bg-white p-4 rounded-2xl shadow-inner mb-6" style={{ border: '1px solid #E2E8F0' }}>
+  <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 flex items-center gap-1">
+    📊 {t('progress.title')}
+  </p>
+  <WorkProgressBar currentPercent={localizedIssueDetails.currentPercent} />
+</div>
+
+          <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 space-y-4 mb-4">
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
+              🏦 {t('budget.transparency.title')}
+            </p>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                <p className="text-[9px] text-slate-400 uppercase font-bold leading-none mb-1">{t('budget.allocation')}</p>
+                <p className="text-xs font-bold text-slate-700">₹{localizedIssueDetails.initialBudget.toLocaleString('en-IN')}</p>
+              </div>
+              <div className="p-3 rounded-xl bg-orange-50 border border-orange-100">
+                <p className="text-[9px] text-orange-400 uppercase font-bold leading-none mb-1">{t('budget.accepted')}</p>
+                <p className="text-xs font-bold text-orange-700">
+                  {(() => {
+                    const selectedBid = bids.find(b => b.issueId === localizedIssueDetails.id && b.status === 'selected');
+                    return selectedBid ? `₹${selectedBid.bidAmount.toLocaleString('en-IN')}` : '---';
+                  })()}
+                </p>
+              </div>
+              <div className="p-3 rounded-xl bg-blue-50 border border-blue-100">
+                <p className="text-[9px] text-blue-400 uppercase font-bold leading-none mb-1">{t('budget.timeline')}</p>
+                <p className="text-xs font-bold text-blue-700">
+                  {localizedIssueDetails.estimatedTimeline ? t('budget.days', { count: localizedIssueDetails.estimatedTimeline }) : 'TBD'}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 text-sm mb-4">
+            <div className="p-3 rounded-xl" style={{ background: '#F8FAFC' }}>
+              <p className="text-gray-400 text-xs">{t('common.location')}</p>
+              <p style={{ fontWeight: 500 }}>{localizedIssueDetails.city}, {localizedIssueDetails.state}</p>
+            </div>
+            <div className="p-3 rounded-xl" style={{ background: '#F8FAFC' }}>
+              <p className="text-gray-400 text-xs">{t('common.reportedOn')}</p>
+              <p style={{ fontWeight: 500 }}>{new Date(localizedIssueDetails.createdAt).toLocaleDateString('en-IN')}</p>
+            </div>
+            <div className="p-3 rounded-xl" style={{ background: '#F8FAFC' }}>
+              <p className="text-gray-400 text-xs">{t('common.address')}</p>
+              <p style={{ fontWeight: 500, fontSize: '0.8rem' }}>{localizedIssueDetails.address}</p>
+            </div>
+            <div className="p-3 rounded-xl" style={{ background: localizedIssueDetails.isRatingFrozen ? '#FFF7ED' : '#FFFBEB' }}>
+              <p className="text-gray-400 text-xs">{t('citizen.details.communityRating')}</p>
+              <p style={{ fontWeight: 600, color: localizedIssueDetails.isRatingFrozen ? '#9A3412' : '#B45309' }}>⭐ {localizedIssueDetails.overallRatingScore.toFixed(1)}/5 {localizedIssueDetails.isRatingFrozen ? t('citizen.details.frozen') : ''}</p>
+            </div>
+          </div>
+
+          <p className="text-gray-600 text-sm mb-4">{localizedIssueDetails.description}</p>
+{localizedIssueDetails.isRatingFrozen && localizedIssueDetails.flaggedReviewBatch && <div className="p-4 rounded-xl" style={{ background: '#FFF7ED', border: '1px solid #FED7AA' }}><p className="text-sm" style={{ color: '#9A3412', fontWeight: 600 }}>{t('citizen.details.freezeInfo', { count: localizedIssueDetails.flaggedReviewBatch.reviewsInBatch, expected: localizedIssueDetails.flaggedReviewBatch.expectedDailyReviews.toFixed(1) })}</p><p className="text-xs mt-2" style={{ color: '#C2410C' }}>{t('citizen.details.freezeTrustedScore', { score: localizedIssueDetails.flaggedReviewBatch.frozenScore.toFixed(1) })}</p></div>}{localizedIssueDetails.afterImage && <div><div className="flex items-center justify-between mb-2"><p style={{ fontWeight: 600, color: '#0B1C2D' }}>{t('citizen.details.resolutionProof')}</p><button onClick={() => setBeforeAfterIssue(issueDetails)} className="px-3 py-1.5 rounded-full text-xs" style={{ background: '#EFF6FF', color: '#1D4ED8' }}>{t('citizen.details.reviewBeforeAfter')}</button></div><img src={localizedIssueDetails.afterImage} alt="Resolution proof" className="w-full rounded-xl object-cover" style={{ height: 180 }} /></div>}{localizedIssueDetails.status === 'awaiting_citizen_verification' && <div className="p-4 rounded-xl" style={{ background: '#FFF7ED', border: '1px solid #FED7AA' }}><p className="text-sm mb-3" style={{ color: '#9A3412', fontWeight: 600 }}>{t('citizen.details.authorityProofNotice')}</p><div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><button onClick={() => { verifyIssueResolution(localizedIssueDetails.id, true); setSelectedIssue(null); alert(t('citizen.alert.verified')); }} className="py-3 rounded-xl text-sm text-white" style={{ background: '#15803D', fontWeight: 600 }}>{t('citizen.details.verifyClose')}</button><button onClick={() => { verifyIssueResolution(localizedIssueDetails.id, false); setSelectedIssue(null); alert(t('citizen.alert.needsWork')); }} className="py-3 rounded-xl text-sm text-white" style={{ background: '#B45309', fontWeight: 600 }}>{t('citizen.details.notSolvedYet')}</button></div></div>}<div><p className="mb-2" style={{ fontWeight: 600, color: '#0B1C2D' }}>{t('common.comments')}</p>{issueComments.map(comment => <div key={comment.id} className="mb-2 p-3 rounded-xl" style={{ background: '#F8FAFC' }}><p className="text-xs text-gray-500 mb-1">{comment.userName} • {new Date(comment.createdAt).toLocaleDateString('en-IN')}</p><p className="text-sm">{comment.content}</p></div>)}{issueComments.length === 0 && <p className="text-gray-400 text-sm">{t('common.noComments')}</p>}</div></div><AssignedBadge contractorId={localizedIssueDetails.assignedContractor} ngoId={localizedIssueDetails.assignedNgo} />{localizedIssueDetails.assignedNgo && <div className="px-5 pb-5"><button onClick={() => setDonationNgoId(localizedIssueDetails.assignedNgo)} className="w-full py-3 rounded-xl text-white" style={{ background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)', fontWeight: 600 }}>{t('citizen.donate')}</button></div>}</div></div>}
       {donationNgoId && <DonationModal ngoId={donationNgoId} onClose={() => setDonationNgoId(null)} />}
     </div>
   );

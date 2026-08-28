@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router';
 import { useApp, MOCK_USERS } from '../context/AppContext';
 import { useLang, Language, LANGUAGE_OPTIONS } from '../context/LanguageContext';
 import { DonationModal } from '../components/shared/DonationModal';
+import { BrandLogo } from '../components/shared/BrandLogo';
 
 const INDIA_GATE_BG = 'https://images.unsplash.com/photo-1766405532163-e38c3033f862?w=1920&q=80';
 
@@ -66,12 +67,7 @@ export default function Landing() {
 
         <header className="relative z-10 flex items-center justify-between px-6 py-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: '#E8821C' }}>
-              <span className="text-white text-lg">🏛</span>
-            </div>
-            <span className="text-white tracking-widest uppercase" style={{ fontSize: '1.5rem', fontWeight: 700, letterSpacing: '0.2em' }}>
-              {t('app.name')}
-            </span>
+            <BrandLogo size="md" showText={true} />
           </div>
 
           <div className="flex items-center gap-1">
@@ -116,12 +112,9 @@ export default function Landing() {
             >
               <span className="text-sm">🇮🇳 {t('landing.hero.badge')}</span>
             </div>
-            <h1
-              className="text-white mb-2 tracking-widest uppercase"
-              style={{ fontSize: 'clamp(2.5rem, 6vw, 5rem)', fontWeight: 800, letterSpacing: '0.15em', textShadow: '0 4px 20px rgba(0,0,0,0.5)' }}
-            >
-              {t('app.name')}
-            </h1>
+            <div className="mb-6 flex justify-center">
+              <BrandLogo size="xl" className="shadow-2xl border-4 border-white border-opacity-20" />
+            </div>
             <p className="text-blue-100 max-w-xl mx-auto" style={{ fontSize: '1.1rem', opacity: 0.9 }}>
               {t('app.tagline')}
             </p>
@@ -178,7 +171,8 @@ export default function Landing() {
           </div>
         </main>
 
-        <footer className="relative z-10 text-center py-4" style={{ borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+        <footer className="relative z-10 text-center py-6 flex flex-col items-center gap-3" style={{ borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+          <BrandLogo size="sm" showText={true} className="opacity-80 hover:opacity-100" />
           <p className="text-blue-200 text-sm tracking-widest uppercase" style={{ opacity: 0.7 }}>
             {t('landing.footer')}
           </p>
@@ -186,9 +180,12 @@ export default function Landing() {
       </div>
 
       {loginModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)' }}>
-          <div className="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl" style={{ fontFamily: "'Poppins', sans-serif" }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)' }} onClick={() => setLoginModal(null)}>
+          <div className="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl" style={{ fontFamily: "'Poppins', sans-serif" }} onClick={e => e.stopPropagation()}>
             <div className="text-center mb-6">
+              <div className="flex justify-center mb-4">
+                <BrandLogo size="md" showText={true} className="brightness-0" />
+              </div>
               <div className="text-5xl mb-3">{loginCards.find(card => card.role === loginModal.role)?.emoji}</div>
               <h2 className="text-2xl" style={{ color: '#0B1C2D', fontWeight: 700 }}>
                 {roleNames[loginModal.role]}

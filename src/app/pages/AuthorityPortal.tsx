@@ -3,12 +3,14 @@ import { useNavigate } from 'react-router';
 import { useApp, Issue } from '../context/AppContext';
 import { useLang } from '../context/LanguageContext';
 import { PortalHeader } from '../components/shared/PortalHeader';
+import { BrandLogo } from '../components/shared/BrandLogo';
 import { StatusBadge, UrgencyBadge, CategoryBadge } from '../components/shared/StatusBadge';
 import { BeforeAfterModal } from '../components/shared/BeforeAfterModal';
 import { AssignedBadge } from '../components/shared/AssignedBadge';
 import { DuplicateBadge } from '../components/shared/DuplicateBadge';
 import { getLocalizedIssueCopy, getLocalizedStateName } from '../utils/issueLocalization';
 import { getStateQualityRatings } from '../utils/stateQuality';
+import { WorkProgressBar } from '../components/shared/WorkProgressBar';
 
 export default function AuthorityPortal() {
   const navigate = useNavigate();
@@ -62,7 +64,7 @@ export default function AuthorityPortal() {
 
   const handleSubmitProof = (issueId: string) => {
     if (!afterImageUrl.trim()) {
-      alert('Authority proof image is required before an issue can move for citizen verification.');
+      alert(t('authority.proof.required'));
       return;
     }
     submitResolutionProof(issueId, afterImageUrl.trim());
@@ -80,18 +82,18 @@ export default function AuthorityPortal() {
   if (!currentUser) return null;
 
   const kpiCards = [
-    { label: 'Resolved', value: resolved, icon: '✅', bg: '#F0FDF4', text: '#15803D', border: '#BBF7D0' },
-    { label: 'In Progress', value: inProgress, icon: '⚙️', bg: '#FFFBEB', text: '#B45309', border: '#FDE68A' },
-    { label: 'Awaiting Citizen Verification', value: awaitingVerification, icon: '🟠', bg: '#FFF7ED', text: '#C2410C', border: '#FED7AA' },
-    { label: 'Open for Bidding', value: openBidding, icon: '🔍', bg: '#EFF6FF', text: '#1D4ED8', border: '#BFDBFE' },
-    { label: '🔴 High Urgency', value: highUrgency, icon: '⚠️', bg: '#FEF2F2', text: '#991B1B', border: '#FECACA' },
-    { label: 'Suspicious', value: suspicious, icon: '🚨', bg: '#FFF7ED', text: '#C2410C', border: '#FED7AA' },
-    { label: 'Total Issues', value: issues.length, icon: '📌', bg: '#F8FAFC', text: '#0B1C2D', border: '#E2E8F0' },
+    { label: t('authority.kpi.resolved'), value: resolved, icon: '✅', bg: '#F0FDF4', text: '#15803D', border: '#BBF7D0' },
+    { label: t('authority.kpi.inProgress'), value: inProgress, icon: '⚙️', bg: '#FFFBEB', text: '#B45309', border: '#FDE68A' },
+    { label: t('authority.kpi.awaiting'), value: awaitingVerification, icon: '🟠', bg: '#FFF7ED', text: '#C2410C', border: '#FED7AA' },
+    { label: t('authority.kpi.openBidding'), value: openBidding, icon: '🔍', bg: '#EFF6FF', text: '#1D4ED8', border: '#BFDBFE' },
+    { label: `🔴 ${t('authority.kpi.highUrgency')}`, value: highUrgency, icon: '⚠️', bg: '#FEF2F2', text: '#991B1B', border: '#FECACA' },
+    { label: t('authority.kpi.suspicious'), value: suspicious, icon: '🚨', bg: '#FFF7ED', text: '#C2410C', border: '#FED7AA' },
+    { label: t('authority.kpi.total'), value: issues.length, icon: <BrandLogo size="sm" />, bg: '#F8FAFC', text: '#0B1C2D', border: '#E2E8F0' },
   ];
 
   return (
     <div className="min-h-screen" style={{ background: '#F5F0E8', fontFamily: "'Poppins', sans-serif" }}>
-      <PortalHeader title={t('authority.title')} subtitle="Delhi Municipal Corporation" onProfileClick={() => setProfileOpen(true)} />
+      <PortalHeader title={t('authority.title')} subtitle={t('authority.subtitle')} onProfileClick={() => setProfileOpen(true)} />
 
       {/* Tab Bar */}
       <div className="sticky top-14 z-30 shadow-sm" style={{ background: '#fff', borderBottom: '1px solid #E2E8F0' }}>
@@ -111,8 +113,8 @@ export default function AuthorityPortal() {
         {activeTab === 'dashboard' && (
           <div>
             <div className="mb-6">
-              <h2 style={{ color: '#0B1C2D', fontWeight: 700 }}>Dashboard Overview</h2>
-              <p className="text-gray-500 text-sm">Real-time civic issue management</p>
+              <h2 style={{ color: '#0B1C2D', fontWeight: 700 }}>{t('authority.dashboard.title')}</h2>
+              <p className="text-gray-500 text-sm">{t('authority.dashboard.desc')}</p>
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
@@ -128,7 +130,7 @@ export default function AuthorityPortal() {
             {/* Suspicious Issues Alert */}
             {suspicious > 0 && (
               <div className="mb-6 p-4 rounded-2xl" style={{ background: '#FEF2F2', border: '2px solid #FECACA' }}>
-                <h3 className="mb-3" style={{ color: '#991B1B', fontWeight: 600 }}>🚨 Suspicious Issues Alert ({suspicious})</h3>
+                <h3 className="mb-3" style={{ color: '#991B1B', fontWeight: 600 }}>🚨 {t('authority.alert.suspicious', { count: suspicious })}</h3>
                 {issues.filter(i => i.isSuspicious).map(issue => (
                   <div key={issue.id} className="flex items-center justify-between p-3 bg-white rounded-xl mb-2">
                     <div>
@@ -140,7 +142,7 @@ export default function AuthorityPortal() {
                     </div>
                     <button onClick={() => setSelectedIssue(issue)}
                       className="px-3 py-1.5 rounded-lg text-xs text-white" style={{ background: '#991B1B' }}>
-                      Review
+                      {t('authority.table.action')}
                     </button>
                   </div>
                 ))}
@@ -150,12 +152,12 @@ export default function AuthorityPortal() {
             <div className="mb-6 bg-white rounded-2xl shadow-sm p-5" style={{ border: '1px solid #E2E8F0' }}>
               <div className="flex flex-wrap items-end justify-between gap-3 mb-4">
                 <div>
-                  <h3 style={{ color: '#0B1C2D', fontWeight: 600 }}>State Quality Rankings</h3>
-                  <p className="text-gray-500 text-sm">Historical score based on resolution rate, citizen ratings, trust signals, and pending verification load.</p>
+                  <h3 style={{ color: '#0B1C2D', fontWeight: 600 }}>{t('authority.rankings.title')}</h3>
+                  <p className="text-gray-500 text-sm">{t('authority.rankings.desc')}</p>
                 </div>
                 {topStateQualityRatings[0] && (
                   <div className="px-4 py-2 rounded-2xl text-sm" style={{ background: '#F0FDF4', color: '#15803D', border: '1px solid #BBF7D0', fontWeight: 600 }}>
-                    Best performer: {getLocalizedStateName(topStateQualityRatings[0].state, language)} ({topStateQualityRatings[0].qualityScore}/100)
+                    {t('authority.rankings.best', { state: getLocalizedStateName(topStateQualityRatings[0].state, language), score: topStateQualityRatings[0].qualityScore })}
                   </div>
                 )}
               </div>
@@ -195,13 +197,13 @@ export default function AuthorityPortal() {
 
             {/* Recent High Urgency */}
             <div className="bg-white rounded-2xl shadow-sm p-5" style={{ border: '1px solid #E2E8F0' }}>
-              <h3 className="mb-4" style={{ color: '#0B1C2D', fontWeight: 600 }}>🔴 High Priority Issues</h3>
+              <h3 className="mb-4" style={{ color: '#0B1C2D', fontWeight: 600 }}>🔴 {t('authority.highPriority.title')}</h3>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr style={{ borderBottom: '2px solid #E2E8F0' }}>
-                      {['Image', 'Issue', 'Category', 'Location', 'Status', 'Urgency', 'Action'].map(h => (
-                        <th key={h} className="pb-3 text-left pr-4 text-xs text-gray-500" style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{h}</th>
+                      {['image', 'issue', 'category', 'location', 'status', 'urgency', 'action'].map(h => (
+                        <th key={h} className="pb-3 text-left pr-4 text-xs text-gray-500" style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{t(`authority.table.${h}`)}</th>
                       ))}
                     </tr>
                   </thead>
@@ -225,7 +227,7 @@ export default function AuthorityPortal() {
                           <button onClick={() => setSelectedIssue(issue)}
                             className="px-3 py-1.5 rounded-lg text-xs text-white transition-all hover:opacity-90"
                             style={{ background: '#0B1C2D' }}>
-                            View
+                            {t('citizen.issues.viewDetails')}
                           </button>
                         </td>
                       </tr>
@@ -243,27 +245,27 @@ export default function AuthorityPortal() {
             <div className="flex flex-wrap gap-3 mb-5">
               <select className="px-3 py-2 rounded-xl text-sm border-2 outline-none" style={{ borderColor: '#E2E8F0', background: '#F8FAFC' }}
                 value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
-                <option value="all">All Statuses</option>
-                <option value="unresolved">Unresolved</option>
-                <option value="open_for_bidding">Open for Bidding</option>
-                <option value="in_progress">In Progress</option>
-                <option value="awaiting_citizen_verification">Awaiting Citizen Verification</option>
-                <option value="resolved">Resolved</option>
+                <option value="all">{t('common.allStatuses')}</option>
+                <option value="unresolved">{t('common.unresolved')}</option>
+                <option value="open_for_bidding">{t('status.open_for_bidding')}</option>
+                <option value="in_progress">{t('status.in_progress')}</option>
+                <option value="awaiting_citizen_verification">{t('status.awaiting_citizen_verification')}</option>
+                <option value="resolved">{t('status.resolved')}</option>
               </select>
               <select className="px-3 py-2 rounded-xl text-sm border-2 outline-none" style={{ borderColor: '#E2E8F0', background: '#F8FAFC' }}
                 value={filterState} onChange={e => setFilterState(e.target.value)}>
-                <option value="all">All States</option>
+                <option value="all">{t('select.state')}</option>
                 {allStates.map(s => <option key={s} value={s}>{getLocalizedStateName(s, language)}</option>)}
               </select>
               <select className="px-3 py-2 rounded-xl text-sm border-2 outline-none" style={{ borderColor: '#E2E8F0', background: '#F8FAFC' }}
                 value={filterCat} onChange={e => setFilterCat(e.target.value)}>
-                <option value="all">All Categories</option>
-                <option value="road">🛣️ Road</option>
-                <option value="water">💧 Water</option>
-                <option value="electricity">⚡ Electricity</option>
-                <option value="sanitation">🗑️ Sanitation</option>
+                <option value="all">{t('common.allCategories')}</option>
+                <option value="road">🛣️ {t('category.road')}</option>
+                <option value="water">💧 {t('category.water')}</option>
+                <option value="electricity">⚡ {t('category.electricity')}</option>
+                <option value="sanitation">🗑️ {t('category.sanitation')}</option>
               </select>
-              <div className="ml-auto text-sm text-gray-500 self-center">{sortedIssues.length} issues</div>
+              <div className="ml-auto text-sm text-gray-500 self-center">{t('common.issueCount', { count: sortedIssues.length })}</div>
             </div>
 
             <div className="bg-white rounded-2xl shadow-sm overflow-hidden" style={{ border: '1px solid #E2E8F0' }}>
@@ -271,8 +273,8 @@ export default function AuthorityPortal() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr style={{ background: '#F8FAFC', borderBottom: '2px solid #E2E8F0' }}>
-                      {['Image', 'Title', 'Category', 'Location', 'Status', 'Urgency', 'Votes', 'Action'].map(h => (
-                        <th key={h} className="py-3 px-4 text-left text-xs text-gray-500" style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{h}</th>
+                      {['image', 'issue', 'category', 'location', 'status', 'urgency', 'votes', 'action'].map(h => (
+                        <th key={h} className="py-3 px-4 text-left text-xs text-gray-500" style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{t(`authority.table.${h}`)}</th>
                       ))}
                     </tr>
                   </thead>
@@ -323,7 +325,7 @@ export default function AuthorityPortal() {
         {activeTab === 'bidding' && (
           <div className="space-y-4">
             <div className="p-4 rounded-xl mb-2" style={{ background: '#FFF7ED', border: '1px solid #FED7AA' }}>
-              <p className="text-sm" style={{ color: '#92400E' }}>ℹ️ Bidding is only enabled for issues with status <strong>"Open for Bidding"</strong>. Once a bid is selected, status changes to "In Progress".</p>
+              <p className="text-sm" style={{ color: '#92400E' }}>ℹ️ {t('authority.bidding.info')}</p>
             </div>
             {issues.filter(i => i.status === 'open_for_bidding' || bids.some(b => b.issueId === i.id)).map(issue => {
               const issueBids = bids.filter(b => b.issueId === issue.id);
@@ -347,11 +349,11 @@ export default function AuthorityPortal() {
 
                   {issueBids.length === 0 ? (
                     <div className="p-4 rounded-xl text-center" style={{ background: '#F8FAFC', color: '#9CA3AF', fontSize: '0.85rem' }}>
-                      No bids received yet. Contractors will bid soon.
+                      {t('authority.bidding.noBids')}
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      <p className="text-sm text-gray-500" style={{ fontWeight: 500 }}>{issueBids.length} Bid(s) Received</p>
+                      <p className="text-sm text-gray-500" style={{ fontWeight: 500 }}>{t('authority.bidding.bidsReceived', { count: issueBids.length })}</p>
                       {issueBids.map(bid => (
                         <div key={bid.id} className="p-4 rounded-xl" style={{ background: bid.status === 'selected' ? '#F0FDF4' : '#F8FAFC', border: bid.status === 'selected' ? '2px solid #BBF7D0' : '1px solid #E2E8F0' }}>
                           <div className="flex items-start justify-between gap-3">
@@ -369,7 +371,7 @@ export default function AuthorityPortal() {
                               <button onClick={() => handleSelectBid(bid.id, issue.id, bid.contractorId)}
                                 className="px-4 py-2 rounded-xl text-sm text-white flex-shrink-0 hover:opacity-90 transition-all"
                                 style={{ background: '#15803D' }}>
-                                ✅ Select Bid
+                                ✅ {t('authority.bidding.selectBid')}
                               </button>
                             )}
                           </div>
@@ -386,7 +388,7 @@ export default function AuthorityPortal() {
         {/* NGO REQUESTS */}
         {activeTab === 'ngo' && (
           <div className="space-y-4">
-            {ngoRequests.length === 0 && <div className="text-center py-16 text-gray-400">No NGO requests yet.</div>}
+            {ngoRequests.length === 0 && <div className="text-center py-16 text-gray-400">{t('authority.ngo.noRequests')}</div>}
             {ngoRequests.map(req => {
               const issue = issues.find(i => i.id === req.issueId);
               if (!issue) return null;
@@ -398,15 +400,15 @@ export default function AuthorityPortal() {
                       <div className="flex flex-wrap gap-2 mb-1.5">
                         <CategoryBadge category={issue.category} />
                         <StatusBadge status={issue.status} />
-                        {req.status === 'pending' && (
-                          <span className="px-2 py-1 rounded-full text-xs" style={{ background: '#FEF9C3', color: '#92400E', border: '1px solid #FDE68A', fontWeight: 600 }}>⏳ Pending Approval</span>
-                        )}
-                        {req.status === 'approved' && (
-                          <span className="px-2 py-1 rounded-full text-xs" style={{ background: '#F0FDF4', color: '#15803D', border: '1px solid #BBF7D0', fontWeight: 600 }}>✅ Approved</span>
-                        )}
-                        {req.status === 'rejected' && (
-                          <span className="px-2 py-1 rounded-full text-xs" style={{ background: '#FEF2F2', color: '#991B1B', border: '1px solid #FECACA', fontWeight: 600 }}>❌ Rejected</span>
-                        )}
+                         {req.status === 'pending' && (
+                           <span className="px-2 py-1 rounded-full text-xs" style={{ background: '#FEF9C3', color: '#92400E', border: '1px solid #FDE68A', fontWeight: 600 }}>⏳ {t('authority.ngo.pending')}</span>
+                         )}
+                         {req.status === 'approved' && (
+                           <span className="px-2 py-1 rounded-full text-xs" style={{ background: '#F0FDF4', color: '#15803D', border: '1px solid #BBF7D0', fontWeight: 600 }}>✅ {t('status.approved')}</span>
+                         )}
+                         {req.status === 'rejected' && (
+                           <span className="px-2 py-1 rounded-full text-xs" style={{ background: '#FEF2F2', color: '#991B1B', border: '1px solid #FECACA', fontWeight: 600 }}>❌ {t('status.rejected')}</span>
+                         )}
                       </div>
                       <div className="flex items-center gap-2">
                         <h3 style={{ fontWeight: 600, color: '#0B1C2D' }}>{getLocalizedIssueCopy(issue, language).title}</h3>
@@ -417,14 +419,14 @@ export default function AuthorityPortal() {
                     </div>
                     {req.status === 'pending' && (
                       <div className="flex gap-2 flex-shrink-0">
-                        <button onClick={() => updateNgoRequest(req.id, req.ngoId, req.issueId, 'approved')}
-                          className="px-4 py-2 rounded-xl text-sm text-white hover:opacity-90" style={{ background: '#15803D' }}>
-                          ✅ Approve
-                        </button>
-                        <button onClick={() => updateNgoRequest(req.id, req.ngoId, req.issueId, 'rejected')}
-                          className="px-4 py-2 rounded-xl text-sm text-white hover:opacity-90" style={{ background: '#DC2626' }}>
-                          ❌ Reject
-                        </button>
+                          <button onClick={() => updateNgoRequest(req.id, req.ngoId, req.issueId, 'approved')}
+                            className="px-4 py-2 rounded-xl text-sm text-white hover:opacity-90" style={{ background: '#15803D' }}>
+                            ✅ {t('button.approve')}
+                          </button>
+                          <button onClick={() => updateNgoRequest(req.id, req.ngoId, req.issueId, 'rejected')}
+                            className="px-4 py-2 rounded-xl text-sm text-white hover:opacity-90" style={{ background: '#DC2626' }}>
+                            ❌ {t('button.reject')}
+                          </button>
                       </div>
                     )}
                   </div>
@@ -437,28 +439,36 @@ export default function AuthorityPortal() {
 
       {/* Issue Detail Modal */}
       {selectedIssue && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)' }}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-y-auto" style={{ maxHeight: '90vh' }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)' }} onClick={() => setSelectedIssue(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-y-auto" style={{ maxHeight: '90vh' }} onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between p-5" style={{ background: '#0B1C2D' }}>
               <h3 className="text-white" style={{ fontWeight: 700 }}>{t('common.details')}</h3>
               <button onClick={() => setSelectedIssue(null)} className="text-white text-2xl">×</button>
             </div>
             <div className="p-5 space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-xs text-gray-500 mb-1">Before (Citizen Reported)</p>
-                  <img src={selectedIssue.beforeImage} alt={t('beforeAfter.before')} className="w-full rounded-xl object-cover" style={{ height: 160 }} />
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500 mb-1">After (Resolution)</p>
-                  {selectedIssue.afterImage ? (
-                      <img src={selectedIssue.afterImage} alt={t('beforeAfter.afterResolved')} className="w-full rounded-xl object-cover" style={{ height: 160 }} />
-                  ) : (
-                    <div className="w-full rounded-xl flex items-center justify-center text-gray-400 text-sm" style={{ height: 160, background: '#F8FAFC', border: '2px dashed #E2E8F0' }}>
-                      No after image yet
-                    </div>
-                  )}
-                </div>
+                 <div>
+                  <p className="text-xs text-gray-500 mb-1">{t('beforeAfter.before')} ({t('citizen.role')})</p>
+                   <img src={selectedIssue.beforeImage} alt={t('beforeAfter.before')} className="w-full rounded-xl object-cover" style={{ height: 160 }} />
+                 </div>
+                 <div>
+                  <p className="text-xs text-gray-500 mb-1">{t('beforeAfter.afterResolved')}</p>
+                   {selectedIssue.afterImage ? (
+                       <img src={selectedIssue.afterImage} alt={t('beforeAfter.afterResolved')} className="w-full rounded-xl object-cover" style={{ height: 160 }} />
+                   ) : (
+                     <div className="w-full rounded-xl flex items-center justify-center text-gray-400 text-sm" style={{ height: 160, background: '#F8FAFC', border: '2px dashed #E2E8F0' }}>
+                       {t('common.noAfterImage')}
+                     </div>
+                   )}
+                 </div>
+              </div>
+
+              {/* Progress Tracking */}
+              <div className="bg-white p-4 rounded-xl shadow-inner" style={{ border: '1px solid #E2E8F0' }}>
+                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2 flex items-center gap-1">
+                  📈 {t('progress.title')}
+                </p>
+                <WorkProgressBar currentPercent={selectedIssue.currentPercent} />
               </div>
 
               <div className="flex flex-wrap gap-2">
@@ -492,29 +502,29 @@ export default function AuthorityPortal() {
                   ))}
                 </div>
 
-                {selectedIssue.status === 'awaiting_citizen_verification' && (
-                  <div className="mb-3 p-3 rounded-xl text-sm" style={{ background: '#FFF7ED', color: '#9A3412', border: '1px solid #FED7AA' }}>
-                    Resolution proof has been submitted. This issue will stay open until the reporting citizen verifies that the work is complete.
-                  </div>
-                )}
+                 {selectedIssue.status === 'awaiting_citizen_verification' && (
+                   <div className="mb-3 p-3 rounded-xl text-sm" style={{ background: '#FFF7ED', color: '#9A3412', border: '1px solid #FED7AA' }}>
+                     {t('authority.proof.notice')}
+                   </div>
+                 )}
 
-                {(selectedIssue.status === 'in_progress' || selectedIssue.status === 'awaiting_citizen_verification') && (
-                  <div className="space-y-2">
-                    <p className="text-xs text-gray-500">Upload authority proof image URL (required before citizen verification):</p>
-                    <input
-                      className="w-full px-3 py-2 rounded-xl border-2 text-sm outline-none"
-                      style={{ borderColor: '#E2E8F0', background: 'white' }}
-                      placeholder="https://..."
-                      value={afterImageUrl}
-                      onChange={e => setAfterImageUrl(e.target.value)}
-                    />
-                    <button onClick={() => handleSubmitProof(selectedIssue.id)}
-                      className="w-full py-2.5 rounded-xl text-sm text-white hover:opacity-90"
-                      style={{ background: '#15803D' }}>
-                      ✅ Mark as Resolved
-                    </button>
-                  </div>
-                )}
+                 {(selectedIssue.status === 'in_progress' || selectedIssue.status === 'awaiting_citizen_verification') && (
+                   <div className="space-y-2">
+                     <p className="text-xs text-gray-500">{t('authority.proof.required')}</p>
+                     <input
+                       className="w-full px-3 py-2 rounded-xl border-2 text-sm outline-none"
+                       style={{ borderColor: '#E2E8F0', background: 'white' }}
+                       placeholder="https://..."
+                       value={afterImageUrl}
+                       onChange={e => setAfterImageUrl(e.target.value)}
+                     />
+                     <button onClick={() => handleSubmitProof(selectedIssue.id)}
+                       className="w-full py-2.5 rounded-xl text-sm text-white hover:opacity-90"
+                       style={{ background: '#15803D' }}>
+                       ✅ {t('status.resolved')}
+                     </button>
+                   </div>
+                 )}
               </div>
 
               {/* Assigned Contractor/NGO */}
@@ -529,19 +539,22 @@ export default function AuthorityPortal() {
       {/* Profile Modal */}
       {profileOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)' }}>
-          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm relative overflow-hidden">
+            <BrandLogo size="lg" className="absolute -top-6 -right-6 opacity-5 rotate-12" />
             <div className="flex items-center justify-between mb-4">
-              <h3 style={{ color: '#0B1C2D', fontWeight: 700 }}>Authority Profile</h3>
+              <h3 style={{ color: '#0B1C2D', fontWeight: 700 }}>{t('common.profile')}</h3>
               <button onClick={() => setProfileOpen(false)} className="text-gray-400 text-xl">×</button>
             </div>
-            <div className="text-center">
-              <div className="text-5xl mb-2">👨🏻‍💼</div>
-              <p style={{ fontWeight: 600, color: '#0B1C2D' }}>{currentUser.fullName}</p>
-              <p className="text-sm text-gray-500">{currentUser.email}</p>
-              <p className="text-sm text-gray-500">{currentUser.city}, {currentUser.state}</p>
-              <div className="mt-3 px-4 py-2 rounded-xl" style={{ background: '#EFF6FF' }}>
-                <p className="text-xs text-blue-600">Role: Municipal Authority Officer</p>
+            <div className="text-center mb-4">
+              <div className="flex justify-center mb-3">
+                <BrandLogo size="md" />
               </div>
+              <p style={{ fontWeight: 700, color: '#0B1C2D' }}>{currentUser.fullName}</p>
+              <p className="text-sm text-gray-500">{currentUser.email}</p>
+              <p className="text-xs text-gray-400 mt-1">{t('authority.role.verified')}</p>
+            </div>
+            <div className="mt-3 px-4 py-2 rounded-xl" style={{ background: '#EFF6FF' }}>
+              <p className="text-xs text-blue-600">{t('authority.profile.role')}</p>
             </div>
           </div>
         </div>

@@ -19,6 +19,7 @@ export interface AppUser {
   city?: string;
   registrationId?: string;
   rating?: number;
+  profilePic?: string;
 }
 
 export interface IssueReviewEvent {
@@ -65,6 +66,9 @@ export interface Issue {
   isSuspicious: boolean;
   isDuplicate: boolean;
   contractorRating: number | null;
+  currentPercent: number;
+  initialBudget: number; // Authority's initial offer
+  estimatedTimeline: number | null; // Completion days
   createdAt: string;
 }
 
@@ -76,6 +80,7 @@ export interface Bid {
   bidAmount: number;
   proposalNote: string;
   status: 'submitted' | 'selected' | 'rejected';
+  estimatedTimeline: number; // Days
   createdAt: string;
 }
 
@@ -140,6 +145,16 @@ type IssueSeed = Omit<Issue, 'overallRatingScore' | 'isRatingFrozen' | 'flaggedR
   duplicateCount?: number;
 };
 
+const getProgressForStatus = (status: IssueStatus): number => {
+  switch (status) {
+    case 'open_for_bidding': return 40;
+    case 'in_progress': return 60;
+    case 'awaiting_citizen_verification': return 95;
+    case 'resolved': return 100;
+    default: return 0;
+  }
+};
+
 const hydrateIssue = (issue: IssueSeed): Issue => ({
   ...issue,
   overallRatingScore: calculateIssueRatingScore(issue.upvotes, issue.downvotes),
@@ -148,6 +163,9 @@ const hydrateIssue = (issue: IssueSeed): Issue => ({
   reviewEvents: [],
   duplicateCount: issue.duplicateCount ?? 1,
   isDuplicate: issue.isDuplicate || (issue.duplicateCount ?? 1) > 1,
+  currentPercent: getProgressForStatus(issue.status),
+  initialBudget: (issue as any).initialBudget ?? (Math.floor(Math.random() * 50) + 20) * 1000,
+  estimatedTimeline: (issue as any).estimatedTimeline ?? null,
 });
 
 const normalizeText = (value: string) => value.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
@@ -288,11 +306,11 @@ const ISSUE_SEEDS: IssueSeed[] = [
 const INITIAL_ISSUES: Issue[] = ISSUE_SEEDS.map(hydrateIssue);
 
 const INITIAL_BIDS: Bid[] = [
-  { id: 'b1', issueId: 'i1', contractorId: 'u3', contractorName: 'BuildTech Solutions', bidAmount: 50000, proposalNote: 'Will repair using M30 grade concrete with proper drainage. 5-day completion guarantee.', status: 'selected', createdAt: getDate2026(1, 16, 10, 0) },
-  { id: 'b2', issueId: 'i5', contractorId: 'u3', contractorName: 'BuildTech Solutions', bidAmount: 65000, proposalNote: 'Full road resurfacing with hot mix asphalt. 7-day project timeline with school hours restriction.', status: 'selected', createdAt: getDate2026(2, 11, 9, 0) },
-  { id: 'b3', issueId: 'i6', contractorId: 'u3', contractorName: 'BuildTech Solutions', bidAmount: 75000, proposalNote: 'Full road patch repair with hot mix asphalt. Will complete within 3 days with reflective traffic cones.', status: 'selected', createdAt: getDate2026(2, 17, 11, 0) },
-  { id: 'b4', issueId: 'i10', contractorId: 'u3', contractorName: 'BuildTech Solutions', bidAmount: 120000, proposalNote: 'Comprehensive pothole & surface repair covering 200sqm. RCC filling with 30-day warranty.', status: 'submitted', createdAt: getDate2026(3, 2, 10, 0) },
-  { id: 'b5', issueId: 'i14', contractorId: 'u3', contractorName: 'BuildTech Solutions', bidAmount: 90000, proposalNote: 'Emergency pothole repair team deployed. Using bituminous macadam with quick-set material.', status: 'submitted', createdAt: getDate2026(3, 13, 9, 0) },
+  { id: 'b1', issueId: 'i1', contractorId: 'u3', contractorName: 'BuildTech Solutions', bidAmount: 50000, proposalNote: 'Will repair using M30 grade concrete with proper drainage. 5-day completion guarantee.', status: 'selected', estimatedTimeline: 5, createdAt: getDate2026(1, 16, 10, 0) },
+  { id: 'b2', issueId: 'i5', contractorId: 'u3', contractorName: 'BuildTech Solutions', bidAmount: 65000, proposalNote: 'Full road resurfacing with hot mix asphalt. 7-day project timeline with school hours restriction.', status: 'selected', estimatedTimeline: 7, createdAt: getDate2026(2, 11, 9, 0) },
+  { id: 'b3', issueId: 'i6', contractorId: 'u3', contractorName: 'BuildTech Solutions', bidAmount: 75000, proposalNote: 'Full road patch repair with hot mix asphalt. Will complete within 3 days with reflective traffic cones.', status: 'selected', estimatedTimeline: 3, createdAt: getDate2026(2, 17, 11, 0) },
+  { id: 'b4', issueId: 'i10', contractorId: 'u3', contractorName: 'BuildTech Solutions', bidAmount: 120000, proposalNote: 'Comprehensive pothole & surface repair covering 200sqm. RCC filling with 30-day warranty.', status: 'submitted', estimatedTimeline: 10, createdAt: getDate2026(3, 2, 10, 0) },
+  { id: 'b5', issueId: 'i14', contractorId: 'u3', contractorName: 'BuildTech Solutions', bidAmount: 90000, proposalNote: 'Emergency pothole repair team deployed. Using bituminous macadam with quick-set material.', status: 'submitted', estimatedTimeline: 4, createdAt: getDate2026(3, 13, 9, 0) },
 ];
 
 const INITIAL_NGO_REQUESTS: NgoRequest[] = [
@@ -340,6 +358,7 @@ interface AppContextType {
   addComment: (comment: Comment) => void;
   addDonation: (donation: Donation) => void;
   rateContractor: (issueId: string, rating: number) => void;
+  updateUserProfile: (profilePic: string) => void;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -399,7 +418,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (i.id !== issueId) return i;
       if (status === 'resolved' && i.status !== 'awaiting_citizen_verification') return i;
       if (status === 'awaiting_citizen_verification' && !i.afterImage) return i;
-      return { ...i, status };
+      return { ...i, status, currentPercent: getProgressForStatus(status) };
     }));
   }, []);
 
@@ -408,19 +427,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const submitResolutionProof = useCallback((issueId: string, imageUrl: string) => {
-    setIssues(prev => prev.map(i => i.id === issueId ? { ...i, afterImage: imageUrl, status: 'awaiting_citizen_verification' } : i));
+    setIssues(prev => prev.map(i => i.id === issueId ? { ...i, afterImage: imageUrl, status: 'awaiting_citizen_verification', currentPercent: 95 } : i));
   }, []);
 
   const verifyIssueResolution = useCallback((issueId: string, isVerified: boolean) => {
-    setIssues(prev => prev.map(i => i.id === issueId ? { ...i, status: isVerified ? 'resolved' : 'in_progress' } : i));
+    setIssues(prev => prev.map(i => i.id === issueId ? { ...i, status: isVerified ? 'resolved' : 'in_progress', currentPercent: isVerified ? 100 : 85 } : i));
   }, []);
 
   const addBid = useCallback((bid: Bid) => { setBids(prev => [bid, ...prev]); }, []);
 
   const selectBid = useCallback((bidId: string, issueId: string, contractorId: string) => {
+    const selectedBid = bids.find(b => b.id === bidId);
     setBids(prev => prev.map(b => b.issueId === issueId ? { ...b, status: b.id === bidId ? 'selected' : 'rejected' } : b));
-    setIssues(prev => prev.map(i => i.id === issueId ? { ...i, status: 'in_progress', assignedContractor: contractorId } : i));
-  }, []);
+    setIssues(prev => prev.map(i => i.id === issueId ? { 
+      ...i, 
+      status: 'in_progress', 
+      assignedContractor: contractorId, 
+      currentPercent: 50,
+      estimatedTimeline: selectedBid?.estimatedTimeline || null
+    } : i));
+  }, [bids]);
 
   const addNgoRequest = useCallback((request: NgoRequest) => { setNgoRequests(prev => [request, ...prev]); }, []);
 
@@ -538,9 +564,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const rateContractor = useCallback((issueId: string, rating: number) => {
     setIssues(prev => prev.map(i => i.id === issueId ? { ...i, contractorRating: rating } : i));
   }, []);
+  
+  const updateUserProfile = useCallback((profilePic: string) => {
+    if (!currentUser) return;
+    const updatedUser = { ...currentUser, profilePic };
+    setCurrentUser(updatedUser);
+    setUsers(prev => prev.map(u => u.id === currentUser.id ? updatedUser : u));
+  }, [currentUser]);
 
   return (
-    <AppContext.Provider value={{ users, issues, bids, ngoRequests, donations, comments, currentUser, setCurrentUser, addIssue, updateIssueStatus, updateAfterImage, submitResolutionProof, verifyIssueResolution, addBid, selectBid, addNgoRequest, updateNgoRequest, voteOnIssue, reviewFlaggedBatch, addComment, addDonation, rateContractor }}>
+    <AppContext.Provider value={{ users, issues, bids, ngoRequests, donations, comments, currentUser, setCurrentUser, addIssue, updateIssueStatus, updateAfterImage, submitResolutionProof, verifyIssueResolution, addBid, selectBid, addNgoRequest, updateNgoRequest, voteOnIssue, reviewFlaggedBatch, addComment, addDonation, rateContractor, updateUserProfile }}>
       {children}
     </AppContext.Provider>
   );

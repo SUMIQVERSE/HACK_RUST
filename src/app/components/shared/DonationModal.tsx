@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { useLang } from '../../context/LanguageContext';
+import { BrandLogo } from './BrandLogo';
 
 interface DonationModalProps {
   ngoId: string;
@@ -41,14 +42,12 @@ export function DonationModal({ ngoId, onClose }: DonationModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)' }}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)' }} onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
         <div className="p-6" style={{ background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)' }}>
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-full flex items-center justify-center text-xl" style={{ background: 'rgba(255,255,255,0.2)', border: '2px solid rgba(255,255,255,0.4)' }}>
-                👥
-              </div>
+              <BrandLogo size="md" className="border-2 border-white border-opacity-30" />
               <div>
                 <p className="text-white" style={{ fontWeight: 700, fontSize: '1.1rem' }}>{ngo.ngoName}</p>
                 <p className="text-green-100 text-xs">{t('donation.verifiedNgo')}</p>
@@ -140,7 +139,7 @@ export function DonationModal({ ngoId, onClose }: DonationModalProps) {
               <p className="text-gray-600">
                 {t('donation.recordedAmount', { amount: (amount || parseInt(customAmount, 10)).toLocaleString('en-IN') })}
               </p>
-              <p className="text-sm text-gray-500 mt-2">Together, we are building a better India.</p>
+              <p className="text-sm text-gray-500 mt-2">{t('donation.footer')}</p>
             </div>
             <button
               onClick={onClose}

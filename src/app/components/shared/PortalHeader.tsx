@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router';
 import { useApp } from '../../context/AppContext';
 import { useLang, LANGUAGE_OPTIONS } from '../../context/LanguageContext';
+import { BrandLogo } from './BrandLogo';
 
 interface PortalHeaderProps {
   title: string;
@@ -30,13 +31,8 @@ export function PortalHeader({ title, subtitle, onProfileClick }: PortalHeaderPr
     <header className="sticky top-0 z-40 shadow-md" style={{ background: '#0B1C2D' }}>
       <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <button onClick={() => navigate('/')} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-            <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: '#E8821C' }}>
-              <span className="text-white text-sm">🏛</span>
-            </div>
-            <span className="text-white tracking-widest uppercase hidden sm:block" style={{ fontWeight: 700, fontSize: '1.1rem', letterSpacing: '0.15em' }}>
-              {t('app.name')}
-            </span>
+          <button onClick={() => navigate('/')} className="flex items-center gap-3 hover:opacity-90 transition-all">
+            <BrandLogo size="sm" showText={true} />
           </button>
           <div className="w-px h-6 bg-white opacity-20 mx-1" />
           <div>
